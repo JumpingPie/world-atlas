@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>world-atlas</title>
+    <meta
+      name="description"
+      content="Interactive research atlas: country profiles, multilateral relations, conflicts, alliances, and trade."
+    />
+
+    <link rel="stylesheet" href="styles/main.css" />
+
+    <!--
+      Importmap — lets ES modules import dependencies by bare specifier
+      (e.g. `import * as d3 from "d3"`) without a build step.
+      Supported in all current evergreen browsers.
+
+      Note: the world-atlas TopoJSON dataset is loaded by a fetch() call
+      inside src/core/map.js, not via import, so it doesn't appear here.
+    -->
+    <script type="importmap">
+      {
+        "imports": {
+          "d3": "https://cdn.jsdelivr.net/npm/d3@7/+esm",
+          "topojson-client": "https://cdn.jsdelivr.net/npm/topojson-client@3/+esm"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="app">
+      <header class="app-header">
+        <h1>world-atlas</h1>
+        <span class="subtitle">multilateral relations &middot; sovereign states</span>
+      </header>
+      <main id="map-container">
+        <!--
+          Map initializes into this container. A loading message is
+          shown until the TopoJSON resolves, then replaced by the SVG.
+        -->
+        <div class="map-loading">Loading world map…</div>
+      </main>
+    </div>
+
+    <!--
+      Bootstrap script. Kept minimal — its only job is to initialize the
+      map and wire up cross-cutting subsystems (state, AI ping). All
+      domain logic lives in modules under src/.
+    -->
+    <script type="module">
+      import { initMap } from "./src/core/map.js";
+
+      const container = document.getElementById("map-container");
+
+      try {
+        // initMap returns the map handle other modules will use later
+        // (layers, panels). For Section 1 we just need it to render.
+        const mapHandle = await initMap(container);
+
+        // Expose on window strictly as a debug aid — production modules
+        // import the handle from where it's stored, not via the global.
+        // Removed in a later section once we have a proper app shell.
+        window.__atlas = { mapHandle };
+
+        // Loading message removal happens after init resolves so users
+        // don't see an empty map flash before the geometry paints.
+        container.querySelector(".map-loading")?.remove();
+      } catch (err) {
+        console.error("[atlas] map init failed:", err);
+        const loading = container.querySelector(".map-loading");
+        if (loading) {
+          loading.className = "map-error";
+          loading.textContent =
+            "Failed to load world map. Check the console for details.";
+        }
+      }
+    </script>
+  </body>
+</html>

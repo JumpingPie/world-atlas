@@ -1,0 +1,20 @@
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Local environment
+.env
+.env.local
+
+# Build artifacts (we don't have a build step yet, but reserve the names)
+dist/
+build/
+node_modules/
+
+# Generated data caches that shouldn't be committed.
+# Anything under data/cache/ is reproducible from the fetchers, so we
+# don't bloat the repo with it. Curated data under data/ IS committed.
+data/cache/

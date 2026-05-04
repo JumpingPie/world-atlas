@@ -1,0 +1,128 @@
+/* styles/main.css
+ *
+ * Base styles for the world-atlas app shell and the map itself.
+ *
+ * Layer-specific styles (e.g. NATO highlight color) live alongside their
+ * layer definitions in src/layers/, not here. This file is for things
+ * the whole app shares: the page layout, the base map appearance, the
+ * panel chrome, and design tokens like colors and spacing.
+ */
+
+/* ---------- Design tokens ----------
+ * Centralized so a future theme switch is a one-place change. */
+:root {
+  --color-bg: #0d1117;
+  --color-ocean: #14283d;
+  --color-land: #2a3a4d;
+  --color-land-stroke: #0d1117;
+  --color-text: #e6edf3;
+  --color-text-dim: #8b949e;
+  --color-accent: #58a6ff;
+  --color-panel-bg: #161b22;
+  --color-panel-border: #30363d;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    monospace;
+}
+
+/* ---------- Page reset and shell ---------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  overflow: hidden;
+}
+
+#app {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100vh;
+}
+
+.app-header {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-panel-border);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.app-header .subtitle {
+  color: var(--color-text-dim);
+  font-size: 0.85rem;
+}
+
+#map-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ---------- Map appearance ---------- */
+.world-map {
+  width: 100%;
+  height: 100%;
+  display: block;
+  /* The cursor hint signals to the user that the map is interactive
+   * (zoomable/pannable) before they click anything. */
+  cursor: grab;
+}
+
+.world-map:active {
+  cursor: grabbing;
+}
+
+.map-ocean {
+  fill: var(--color-ocean);
+}
+
+.country {
+  fill: var(--color-land);
+  stroke: var(--color-land-stroke);
+  /* Stroke is non-scaling so country borders stay visually thin even
+   * when the user zooms in. Without this, borders would appear as thick
+   * blobs at high zoom. */
+  vector-effect: non-scaling-stroke;
+  stroke-width: 0.5px;
+  /* Smooth color transition for hover/selection styles added later. */
+  transition: fill 120ms ease;
+}
+
+.country:hover {
+  fill: #3a4d63;
+}
+
+/* ---------- Loading and error states ---------- */
+.map-loading,
+.map-error {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--color-bg);
+  color: var(--color-text-dim);
+  pointer-events: none;
+}
+
+.map-error {
+  color: #f85149;
+}
