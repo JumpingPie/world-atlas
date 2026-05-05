@@ -10,14 +10,31 @@
     />
 
     <link rel="stylesheet" href="styles/main.css" />
+    <!--
+      Theme stylesheets. Each defines its tokens scoped under a
+      .theme-* class on <html>; only the active theme's class is
+      present at any time, so others are inert until applied.
+      Adding a new theme: add another <link> here, then list it in
+      AVAILABLE_THEMES in src/core/theme.js.
+    -->
+    <link rel="stylesheet" href="styles/themes/atlas.css" />
 
     <!--
       Importmap — lets ES modules import dependencies by bare specifier
       (e.g. `import * as d3 from "d3"`) without a build step.
       Supported in all current evergreen browsers.
 
-      Note: the world-atlas TopoJSON dataset is loaded by a fetch() call
-      inside src/core/map.js, not via import, so it doesn't appear here.
+      MUST appear BEFORE any <script type="module"> in the document.
+      The browser begins resolving a module's imports the moment it
+      encounters the script tag, so a module declared earlier in the
+      page won't see this map and its bare imports will fail to
+      resolve. Symptom of getting this wrong: a silent module-load
+      error and a frozen UI showing whatever loading placeholder is
+      in the markup.
+
+      Note: the world-atlas TopoJSON dataset is loaded by a fetch()
+      call inside src/core/map.js, not via import, so it doesn't
+      appear here.
     -->
     <script type="importmap">
       {
@@ -27,12 +44,32 @@
         }
       }
     </script>
+
+    <!--
+      Apply the saved theme before <body> is parsed so the user
+      doesn't see a flash of the default theme on first paint. This
+      is the only place theme.js is invoked imperatively from inline
+      script; everything else uses the module's exports.
+    -->
+    <script type="module">
+      import { applyTheme, getTheme } from "./src/core/theme.js";
+      applyTheme(getTheme());
+    </script>
   </head>
   <body>
     <div id="app">
       <header class="app-header">
         <h1>world-atlas</h1>
         <span class="subtitle">multilateral relations &middot; sovereign states</span>
+        <!--
+          Theme toggle. Label is set at startup (and updated on click)
+          to show the *next* theme that clicking will switch to, so it
+          reads as a verb ("Atlas" = "switch to atlas") rather than as
+          an indicator of the current state.
+        -->
+        <button class="theme-toggle" id="theme-toggle" type="button">
+          Theme
+        </button>
       </header>
       <main id="map-container">
         <!--
@@ -59,9 +96,27 @@
     <script type="module">
       import { initMap } from "./src/core/map.js";
       import { initPanel } from "./src/core/panel.js";
+      import { cycleTheme, getTheme, listThemes } from "./src/core/theme.js";
 
       const container = document.getElementById("map-container");
       const panelContainer = document.getElementById("country-panel");
+
+      // Theme toggle button. Cycles through AVAILABLE_THEMES.
+      // Capitalize the displayed label since it appears as the button
+      // text and the underlying theme names are lowercase identifiers.
+      const themeBtn = document.getElementById("theme-toggle");
+      const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+      function nextThemeLabel() {
+        const themes = listThemes();
+        const cur = getTheme();
+        const next = themes[(themes.indexOf(cur) + 1) % themes.length];
+        return cap(next);
+      }
+      themeBtn.textContent = nextThemeLabel();
+      themeBtn.addEventListener("click", () => {
+        cycleTheme();
+        themeBtn.textContent = nextThemeLabel();
+      });
 
       // Panel can be initialized synchronously; it just listens for
       // state changes. The map initializes async because it has to

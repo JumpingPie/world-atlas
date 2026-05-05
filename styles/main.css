@@ -9,18 +9,45 @@
  */
 
 /* ---------- Design tokens ----------
- * Centralized so a future theme switch is a one-place change. */
+ *
+ * Default values define the "dark" theme. Alternate themes live under
+ * styles/themes/ and override these tokens via a theme-* class on the
+ * <html> element (applied by src/core/theme.js).
+ *
+ * To add a new theme: drop a CSS file under styles/themes/, scope its
+ * rules under .theme-<name>, link it from index.html. No changes here
+ * are required.
+ *
+ * Anything that varies between themes belongs here. Anything that
+ * doesn't (fonts, spacing, animation timings) can live wherever.
+ */
 :root {
+  /* Surfaces */
   --color-bg: #0d1117;
-  --color-ocean: #14283d;
-  --color-land: #2a3a4d;
-  --color-land-stroke: #0d1117;
+  --color-panel-bg: #161b22;
+  --color-panel-border: #30363d;
+  --color-card-bg: rgba(255, 255, 255, 0.02);
+  --color-hover-overlay: rgba(255, 255, 255, 0.06);
+  --color-active-overlay: rgba(255, 255, 255, 0.12);
+
+  /* Text */
   --color-text: #e6edf3;
   --color-text-dim: #8b949e;
   --color-accent: #58a6ff;
-  --color-panel-bg: #161b22;
-  --color-panel-border: #30363d;
+  --color-error: #f85149;
 
+  /* Map geometry */
+  --color-ocean: #14283d;
+  --color-land: #2a3a4d;
+  --color-land-hover: #3a4d63;
+  --color-land-stroke: #0d1117;
+  --color-selection-stroke: #ffffff;
+
+  /* Map labels */
+  --color-label-fill: #f3f4f6;
+  --color-label-stroke: rgba(0, 0, 0, 0.78);
+
+  /* Type */
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
@@ -70,6 +97,28 @@ body {
   font-size: 0.85rem;
 }
 
+/* Push the theme toggle to the right edge of the header. The flex
+ * container gap doesn't push items to the end on its own — this
+ * margin-left:auto trick is the standard CSS way to do it without
+ * adding a wrapper element. */
+.app-header .theme-toggle {
+  margin-left: auto;
+  background: transparent;
+  color: var(--color-text-dim);
+  border: 1px solid var(--color-panel-border);
+  border-radius: 4px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.app-header .theme-toggle:hover {
+  background: var(--color-hover-overlay);
+  color: var(--color-text);
+}
+
 #map-container {
   position: relative;
   width: 100%;
@@ -108,7 +157,7 @@ body {
 }
 
 .country:hover {
-  fill: #3a4d63;
+  fill: var(--color-land-hover);
 }
 
 /* ---------- Loading and error states ---------- */
@@ -124,7 +173,7 @@ body {
 }
 
 .map-error {
-  color: #f85149;
+  color: var(--color-error);
 }
 
 /* Selection highlighting. map.js applies .is-selected to the chosen
@@ -136,7 +185,7 @@ body {
 
 .country.is-selected {
   fill: var(--color-accent);
-  stroke: #ffffff;
+  stroke: var(--color-selection-stroke);
   stroke-width: 1.2px;
   opacity: 1;
 }
@@ -160,8 +209,8 @@ body {
  * regardless of the parent transform — the same trick we already
  * use on country borders. */
 .country-label {
-  fill: #f3f4f6;
-  stroke: rgba(0, 0, 0, 0.78);
+  fill: var(--color-label-fill);
+  stroke: var(--color-label-stroke);
   stroke-width: 2px;
   paint-order: stroke fill;
   vector-effect: non-scaling-stroke;
@@ -203,8 +252,8 @@ body {
  * country labels because they're the headline element of the world
  * view. */
 .region-label {
-  fill: #f3f4f6;
-  stroke: rgba(0, 0, 0, 0.78);
+  fill: var(--color-label-fill);
+  stroke: var(--color-label-stroke);
   stroke-width: 2.5px;
   paint-order: stroke fill;
   vector-effect: non-scaling-stroke;
@@ -261,11 +310,11 @@ body {
 }
 
 .map-control-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--color-hover-overlay);
 }
 
 .map-control-btn:active {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--color-active-overlay);
 }
 
 /* ---------- Country side panel ----------
@@ -325,7 +374,7 @@ body {
 
 .panel-close:hover {
   color: var(--color-text);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--color-hover-overlay);
 }
 
 .panel-cards {
@@ -342,7 +391,7 @@ body {
  * live alongside their card definitions (when needed) but the base
  * appearance is consistent so the panel reads as a unified surface. */
 .panel-card {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--color-card-bg);
   border: 1px solid var(--color-panel-border);
   border-radius: 6px;
   padding: 0.85rem;
@@ -357,12 +406,12 @@ body {
 }
 
 .panel-card .card-error {
-  color: #f85149;
+  color: var(--color-error);
   font-style: normal;
 }
 
 .panel-card-error {
-  border-color: #f85149;
+  border-color: var(--color-error);
 }
 
 /* ---------- Stats card ----------

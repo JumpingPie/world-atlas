@@ -1,0 +1,43 @@
+/* styles/themes/atlas.css
+ *
+ * Light cartographic theme — paper-atlas aesthetic.
+ *
+ * What it overrides: design tokens defined in main.css. The :root
+ * declarations there are the dark theme; selectors below activate
+ * when src/core/theme.js applies the .theme-atlas class to <html>.
+ *
+ * Color rationale: warm cream paper, pale blue oceans, soft beige
+ * land, dark warm-brown borders and labels. The intent is the look
+ * of a printed reference atlas, not a navigation app — clean and
+ * informational rather than photorealistic.
+ *
+ * To add a new theme: copy this file as styles/themes/<name>.css,
+ * change the selector and tokens, link it from index.html.
+ */
+
+.theme-atlas {
+  /* Surfaces */
+  --color-bg: #ebe2cb;
+  --color-panel-bg: #f5edd8;
+  --color-panel-border: #c5b69a;
+  --color-card-bg: rgba(0, 0, 0, 0.025);
+  --color-hover-overlay: rgba(0, 0, 0, 0.06);
+  --color-active-overlay: rgba(0, 0, 0, 0.1);
+
+  /* Text */
+  --color-text: #2d251a;
+  --color-text-dim: #6e6051;
+  --color-accent: #4a7d40; /* Forest green — paper-atlas selection feel */
+  --color-error: #b03a2e;
+
+  /* Map geometry */
+  --color-ocean: #aac2cc;
+  --color-land: #f2eadc;
+  --color-land-hover: #e8ddc5;
+  --color-land-stroke: #5e4e3c;
+  --color-selection-stroke: #2d251a;
+
+  /* Map labels */
+  --color-label-fill: #2d251a;
+  --color-label-stroke: rgba(255, 255, 255, 0.85);
+}
