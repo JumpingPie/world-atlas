@@ -24,6 +24,7 @@
 
 import * as d3 from "d3";
 import * as topojson from "topojson-client";
+import { setState, on } from "./state.js";
 
 /**
  * Path to the world country borders TopoJSON. Loaded from CDN in
@@ -102,7 +103,32 @@ export async function initMap(container) {
     // so panels and layers can target specific countries via standard
     // CSS/JS selectors without re-binding data.
     .attr("data-iso-numeric", (d) => d.id)
-    .attr("d", path);
+    .attr("d", path)
+    // Click selection. The map's only responsibility is to publish the
+    // selection through state.js. Whoever cares (the panel) listens
+    // there. Note we use d3's event handler so `this` is the path
+    // element and we can stop propagation up to the SVG zoom handler.
+    .on("click", (event, feature) => {
+      event.stopPropagation();
+      setState({ selectedCountry: feature });
+    });
+
+  // Clicking the ocean (the background rect) clears the selection so
+  // the panel closes. We attach this AFTER the country handlers above
+  // so country clicks (which stopPropagation) take precedence.
+  root.select("rect.map-ocean").on("click", () => {
+    setState({ selectedCountry: null });
+  });
+
+  // Reflect selection visually: highlight the selected country path
+  // and dim the rest. The map listens to state.js rather than the
+  // panel telling it directly — keeps the data flow one-way.
+  on("selectedCountry", (country) => {
+    countriesGroup
+      .selectAll("path.country")
+      .classed("is-selected", (d) => country != null && d.id === country.id)
+      .classed("is-dimmed", (d) => country != null && d.id !== country.id);
+  });
 
   // Zoom + pan. Scale extent allows zooming from full-world view (1×) to
   // a mid-range zoom (8×) — sufficient for region-level inspection.
