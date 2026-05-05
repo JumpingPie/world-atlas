@@ -47,6 +47,12 @@
   --color-label-fill: #f3f4f6;
   --color-label-stroke: rgba(0, 0, 0, 0.78);
 
+  /* Graticule (lat/long grid). Default: transparent so the grid is
+   * invisible. Themes that want a visible graticule (atlas) override
+   * this. The grid is always *rendered* — it's just colored to be
+   * invisible in themes that don't use it. */
+  --color-graticule: transparent;
+
   /* Type */
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
@@ -142,6 +148,38 @@ body {
 
 .map-ocean {
   fill: var(--color-ocean);
+}
+
+/* Graticule — see src/core/map.js for how it's added. The path
+ * inherits its color from a CSS variable so themes can show or
+ * hide it without any JS changes. */
+.map-graticule {
+  pointer-events: none;
+}
+
+.map-graticule .graticule {
+  stroke: var(--color-graticule);
+  stroke-width: 0.5px;
+  vector-effect: non-scaling-stroke;
+  fill: none;
+}
+
+/* ---------- Paper effects overlay ----------
+ * Hidden by default; activated by the .theme-atlas class in
+ * styles/themes/atlas.css. The element exists in the DOM at all
+ * times so theme switches don't need to add/remove nodes —
+ * they just toggle visibility through CSS.
+ *
+ * pointer-events:none guarantees the overlay never blocks map
+ * interactions (clicks, drag, wheel) regardless of which theme
+ * is active. */
+.paper-effects {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: none;
+  /* Above the SVG, below the panel and zoom controls. */
+  z-index: 1;
 }
 
 .country {

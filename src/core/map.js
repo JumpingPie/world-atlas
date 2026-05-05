@@ -124,6 +124,13 @@ export async function initMap(container) {
     .attr("width", width)
     .attr("height", height);
 
+  // Graticule: latitude/longitude grid lines. Always rendered; its
+  // visibility is controlled by the --color-graticule CSS variable,
+  // which is transparent in the default theme and opaque in the
+  // atlas theme. This keeps theming purely a CSS concern — no JS
+  // branches on theme state.
+  const graticuleGroup = root.append("g").attr("class", "map-graticule");
+
   const countriesGroup = root.append("g").attr("class", "map-countries");
   const overlaysGroup = root.append("g").attr("class", "map-overlays");
   // Country labels: ordered above overlays so they paint on top.
@@ -147,6 +154,16 @@ export async function initMap(container) {
   // country geometries — centers and scales the world correctly
   // regardless of container size or aspect ratio.
   projection.fitSize([width, height], countries);
+
+  // d3.geoGraticule10() returns a single MultiLineString covering the
+  // world at 10° spacing — fine enough to read as a real graticule
+  // without overwhelming the world view. Rendered as one path for
+  // efficiency.
+  graticuleGroup
+    .append("path")
+    .attr("class", "graticule")
+    .attr("d", path(d3.geoGraticule10()))
+    .attr("fill", "none");
 
   countriesGroup
     .selectAll("path.country")

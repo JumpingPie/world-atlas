@@ -79,6 +79,16 @@
         <div class="map-loading">Loading world map…</div>
 
         <!--
+          Paper effects overlay. Hidden by default; activated by the
+          atlas theme to add aged-paper vignette, grain, and fold
+          lines. Lives inside map-container so it scales with the map
+          area, sits above the SVG (z-index:1) but below the panel
+          (z-index:10) and zoom controls (z-index:5). aria-hidden
+          because it's purely decorative.
+        -->
+        <div class="paper-effects" aria-hidden="true"></div>
+
+        <!--
           Country side panel. Lives inside the map container so it
           overlays the map (rather than reflowing the layout). The
           panel is hidden by default and animates in via the .is-open
