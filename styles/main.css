@@ -172,25 +172,66 @@ body {
  * map.js updates whenever the user zooms; CSS uses that to decide
  * which tiers of labels to show.
  *
- *   zoom-tier-1 (k < 2):  show only tier 1 (largest ~25 countries)
- *   zoom-tier-2 (2 ≤ k < 4): show tiers 1 and 2
- *   zoom-tier-3 (k ≥ 4):  show all tiers
+ *   zoom-tier-1 (k < 2):       continent labels only — country
+ *                              labels and country borders fade so
+ *                              the world reads as continents.
+ *   zoom-tier-2 (2 ≤ k < 4):   country borders return; tier-1 and
+ *                              tier-2 country labels visible;
+ *                              continent labels hidden.
+ *   zoom-tier-3 (k ≥ 4):       all country labels visible.
  *
  * Hidden labels use opacity rather than display:none so the smooth
- * transition above works as the user zooms across a threshold. */
-.world-map.zoom-tier-1 .country-label-tier-2,
-.world-map.zoom-tier-1 .country-label-tier-3,
+ * transitions above work as the user zooms across a threshold. */
+
+/* At zoom-tier-1 (world view), no country labels and no continent
+ * labels are visible from the country-label class — only the region
+ * labels show. */
+.world-map.zoom-tier-1 .country-label {
+  opacity: 0;
+}
 .world-map.zoom-tier-2 .country-label-tier-3 {
   opacity: 0;
 }
 
-.world-map.zoom-tier-1 .country-label-tier-1,
 .world-map.zoom-tier-2 .country-label-tier-1,
 .world-map.zoom-tier-2 .country-label-tier-2,
 .world-map.zoom-tier-3 .country-label-tier-1,
 .world-map.zoom-tier-3 .country-label-tier-2,
 .world-map.zoom-tier-3 .country-label-tier-3 {
   opacity: 1;
+}
+
+/* Country borders fade at zoom-tier-1 so the world reads as
+ * continents rather than 200 individually-outlined countries.
+ * Stroke is removed entirely (rather than just dimmed) because at
+ * world view the borders add noise without information density.
+ * Fills remain so the land is still distinguishable from ocean. */
+.world-map.zoom-tier-1 .country {
+  stroke-opacity: 0;
+}
+
+/* ---------- Region (continent) labels ----------
+ * Visible only at zoom-tier-1 — fade out as user zooms in past 2×
+ * and country labels take over. Larger and more emphatic than
+ * country labels because they're the headline element of the world
+ * view. */
+.region-label {
+  fill: #f3f4f6;
+  stroke: rgba(0, 0, 0, 0.7);
+  stroke-width: 4px;
+  paint-order: stroke fill;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+.world-map .region-label {
+  opacity: 0;
+}
+.world-map.zoom-tier-1 .region-label {
+  opacity: 0.85;
 }
 
 /* ---------- Zoom controls ----------

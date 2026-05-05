@@ -56,6 +56,37 @@ const EDGE_PAN_THRESHOLD = 30;
  *  the threshold boundary to this value at the edge. */
 const EDGE_PAN_MAX_SPEED = 8;
 
+/** Base on-screen size of continent labels, in pixels. Larger than
+ *  country labels because continent labels stand alone and need to
+ *  read at a glance from the world view. */
+const REGION_BASE_SIZE = 22;
+
+/**
+ * Continent labels for the lowest zoom level.
+ *
+ * Positions are in [longitude, latitude] and projected to screen
+ * coordinates at runtime. These were chosen as visual centers — not
+ * geographic centroids — because the visual center of a continent
+ * (where the eye expects the label) is often offset from its true
+ * centroid (Russia pulls Asia's centroid northward, for example).
+ *
+ * Antarctica is intentionally omitted: it appears as a thin strip at
+ * the bottom of equal-area world maps and a label there competes
+ * with the map controls and clutters the view.
+ *
+ * This is a temporary scaffold. A later section will replace it with
+ * computed centroids of merged regional geometries, derived from a
+ * proper country-to-region mapping table.
+ */
+const CONTINENT_LABELS = [
+  { name: "North America", coords: [-100, 45] },
+  { name: "South America", coords: [-58, -15] },
+  { name: "Europe", coords: [15, 52] },
+  { name: "Africa", coords: [20, 5] },
+  { name: "Asia", coords: [95, 40] },
+  { name: "Oceania", coords: [140, -25] },
+];
+
 /**
  * Initialize the world map inside `container`. Call this once at app
  * startup.
@@ -95,11 +126,18 @@ export async function initMap(container) {
 
   const countriesGroup = root.append("g").attr("class", "map-countries");
   const overlaysGroup = root.append("g").attr("class", "map-overlays");
-  // Labels group is ordered last so labels paint on top of overlays.
+  // Country labels: ordered above overlays so they paint on top.
   const labelsGroup = root
     .append("g")
     .attr("class", "map-labels")
     .attr("font-size", `${LABEL_BASE_SIZE}px`);
+  // Region labels: separate group, only visible at zoom-tier-1.
+  // Ordered last so they paint above country labels (relevant if
+  // both groups are ever simultaneously visible during a transition).
+  const regionLabelsGroup = root
+    .append("g")
+    .attr("class", "map-region-labels")
+    .attr("font-size", `${REGION_BASE_SIZE}px`);
 
   // Fetch and render the country borders.
   const topology = await fetchCountriesTopology();
@@ -154,6 +192,27 @@ export async function initMap(container) {
     .attr("dy", "0.35em")
     .text((d) => d.feature.properties?.name ?? "");
 
+  // Continent labels for zoom-tier-1. Project the hardcoded lat/lon
+  // positions through the active projection, then drop any that
+  // didn't project cleanly (shouldn't happen for points on land but
+  // we defensively filter).
+  const regionLabelData = CONTINENT_LABELS.map((c) => {
+    const projected = projection(c.coords);
+    return projected
+      ? { name: c.name, x: projected[0], y: projected[1] }
+      : null;
+  }).filter((d) => d != null && Number.isFinite(d.x));
+
+  regionLabelsGroup
+    .selectAll("text.region-label")
+    .data(regionLabelData)
+    .join("text")
+    .attr("class", "region-label")
+    .attr("transform", (d) => `translate(${d.x}, ${d.y})`)
+    .attr("text-anchor", "middle")
+    .attr("dy", "0.35em")
+    .text((d) => d.name);
+
   // Clicking the ocean clears the selection. Attached after country
   // handlers so country clicks (which stopPropagation) win.
   root.select("rect.map-ocean").on("click", () => {
@@ -181,6 +240,17 @@ export async function initMap(container) {
   const zoom = d3
     .zoom()
     .scaleExtent([1, 8])
+    // Constrain panning to the SVG bounds. At k=1 (world view) the
+    // viewport already fills these bounds, so no panning is possible
+    // — clicking-and-dragging won't do anything, which is correct
+    // because there's nowhere to pan to. At higher zoom the viewport
+    // is smaller in world coordinates and panning is allowed within
+    // the bounds. Without this, users can drag the map entirely off
+    // screen and end up looking at a black void.
+    .translateExtent([
+      [0, 0],
+      [width, height],
+    ])
     // Suppress d3.zoom's built-in wheel handler; we do our own below
     // so two-finger trackpad swipe pans (rather than zooming as it
     // would by default). Drag-to-pan still goes through d3.zoom.
@@ -194,10 +264,13 @@ export async function initMap(container) {
     .on("zoom", (event) => {
       const k = event.transform.k;
       root.attr("transform", event.transform);
-      // Counter-scale label font so labels stay constant on-screen
-      // size regardless of zoom level.
+      // Counter-scale label fonts so labels stay constant on-screen
+      // size regardless of zoom level. Both label groups get the
+      // same treatment because both live inside the transformed root.
       labelsGroup.attr("font-size", `${LABEL_BASE_SIZE / k}px`);
-      // Apply zoom-tier class so CSS can show/hide tiered labels.
+      regionLabelsGroup.attr("font-size", `${REGION_BASE_SIZE / k}px`);
+      // Apply zoom-tier class so CSS can show/hide tiered labels and
+      // swap the country/region rendering at the lowest zoom.
       const tier = k >= 4 ? 3 : k >= 2 ? 2 : 1;
       svg.attr("class", `world-map zoom-tier-${tier}`);
     })
