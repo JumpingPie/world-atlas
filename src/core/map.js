@@ -162,35 +162,54 @@ export async function initMap(container) {
       setState({ selectedCountry: feature });
     });
 
-  // Country name labels with tiered visibility. Tier 1 (largest ~25
-  // countries) shows at every zoom; tier 2 appears at 2× zoom and
-  // beyond; tier 3 at 4×+. Sorting by geographic area means visual
-  // size on the map roughly corresponds to label tier — labels appear
-  // where there's space for them.
-  const labelTiers = computeLabelTiers(countries.features);
+  // Country name labels with per-country zoom thresholds.
+  //
+  // Why per-country instead of a global tier system: a country's label
+  // is only useful when the country is rendered wide enough for the
+  // text to fit. A rank-based tier (top 25 / next 50 / rest) ignores
+  // name length entirely — Bosnia and Herzegovina is geographically
+  // medium-sized but its name is so long that the label still won't
+  // fit at the same zoom as Brazil. Computing the threshold from
+  // (label width) / (country bbox width) gets every country to appear
+  // exactly when there's room for it.
+  //
+  // requiredK is clamped to [2, 8]:
+  //   2 → minimum zoom at which any country labels show; below this
+  //       we're showing continent labels instead.
+  //   8 → maximum zoom in our scaleExtent. Tiny countries with long
+  //       names (Vatican City, Liechtenstein) get clamped here so
+  //       they're still labeled at max zoom even if cramped — better
+  //       than never being labeled.
+  //
+  // The 0.55 multiplier on name.length is a rough sans-serif average
+  // glyph width relative to font size. Wide enough not to clip
+  // genuinely long names, narrow enough that wide-set labels (mostly
+  // capitals) still resolve correctly.
   const labelData = countries.features
     .map((f) => {
       const [cx, cy] = path.centroid(f);
-      return { feature: f, cx, cy };
+      if (!Number.isFinite(cx) || !Number.isFinite(cy)) return null;
+      const bounds = path.bounds(f);
+      const bboxWidth = Math.max(1, bounds[1][0] - bounds[0][0]);
+      const name = f.properties?.name ?? "";
+      const labelWidth = name.length * 0.55 * LABEL_BASE_SIZE;
+      const requiredK = Math.max(
+        2,
+        Math.min(8, labelWidth / bboxWidth)
+      );
+      return { feature: f, cx, cy, requiredK, name };
     })
-    // Some features (very small islands, geometry edge cases) yield
-    // a NaN centroid. Filter them out rather than placing the label
-    // at (0,0).
-    .filter((d) => Number.isFinite(d.cx) && Number.isFinite(d.cy));
+    .filter((d) => d != null);
 
   labelsGroup
     .selectAll("text.country-label")
     .data(labelData)
     .join("text")
-    .attr(
-      "class",
-      (d) =>
-        `country-label country-label-tier-${labelTiers.get(d.feature.id) ?? 3}`
-    )
+    .attr("class", "country-label")
     .attr("transform", (d) => `translate(${d.cx}, ${d.cy})`)
     .attr("text-anchor", "middle")
     .attr("dy", "0.35em")
-    .text((d) => d.feature.properties?.name ?? "");
+    .text((d) => d.name);
 
   // Continent labels for zoom-tier-1. Project the hardcoded lat/lon
   // positions through the active projection, then drop any that
@@ -269,8 +288,15 @@ export async function initMap(container) {
       // same treatment because both live inside the transformed root.
       labelsGroup.attr("font-size", `${LABEL_BASE_SIZE / k}px`);
       regionLabelsGroup.attr("font-size", `${REGION_BASE_SIZE / k}px`);
-      // Apply zoom-tier class so CSS can show/hide tiered labels and
-      // swap the country/region rendering at the lowest zoom.
+      // Per-label visibility: a country label only shows once the
+      // country is wide enough on screen for its name to fit.
+      // requiredK was precomputed from each country's bbox width and
+      // its name length.
+      labelsGroup
+        .selectAll("text.country-label")
+        .style("opacity", (d) => (k >= d.requiredK ? null : 0));
+      // Apply zoom-tier class so CSS can swap continent labels in/out
+      // and fade country borders at the lowest zoom.
       const tier = k >= 4 ? 3 : k >= 2 ? 2 : 1;
       svg.attr("class", `world-map zoom-tier-${tier}`);
     })
@@ -338,26 +364,6 @@ export async function initMap(container) {
 // map handle. If a layer or panel needs something below, expose it on
 // the handle rather than importing the helper directly.
 // --------------------------------------------------------------------
-
-/**
- * Compute a label-visibility tier for each country, ordered by the
- * country's geographic area (in steradians, via d3.geoArea). The 25
- * largest countries get tier 1, the next 50 get tier 2, the rest get
- * tier 3. CSS hides higher tiers until the map is sufficiently zoomed.
- *
- * @param {Array<object>} features - GeoJSON country features.
- * @returns {Map<string|number, 1|2|3>}
- */
-function computeLabelTiers(features) {
-  const sorted = features
-    .map((f) => ({ id: f.id, area: d3.geoArea(f) }))
-    .sort((a, b) => b.area - a.area);
-  const tiers = new Map();
-  sorted.forEach((entry, i) => {
-    tiers.set(entry.id, i < 25 ? 1 : i < 75 ? 2 : 3);
-  });
-  return tiers;
-}
 
 /**
  * Wire up the custom wheel handler that gives us trackpad two-finger

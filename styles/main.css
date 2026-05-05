@@ -150,62 +150,49 @@ body {
  * paint-order:stroke fill puts the dark stroke behind the white fill,
  * giving labels a subtle outline that keeps them legible over both
  * land and ocean — important for an atlas where labels often cross
- * coastlines or sit over light/dark land regions. */
+ * coastlines or sit over light/dark land regions.
+ *
+ * vector-effect:non-scaling-stroke is critical: without it, the
+ * stroke (an absolute pixel width) gets multiplied by the zoom
+ * transform's k, so at 4× zoom a 2px outline renders as 8px on
+ * screen and the text appears as a thick double-outlined ghost.
+ * non-scaling-stroke pins the stroke to its declared pixel width
+ * regardless of the parent transform — the same trick we already
+ * use on country borders. */
 .country-label {
   fill: #f3f4f6;
-  stroke: rgba(0, 0, 0, 0.7);
-  stroke-width: 3px;
+  stroke: rgba(0, 0, 0, 0.78);
+  stroke-width: 2px;
   paint-order: stroke fill;
+  vector-effect: non-scaling-stroke;
   font-weight: 500;
-  /* Letter-spacing makes small labels slightly more readable on a
-   * busy map. */
   letter-spacing: 0.02em;
   /* Labels never receive pointer events — clicks pass through to the
    * country path beneath, so users can click a country regardless of
    * label coverage. */
   pointer-events: none;
-  /* Smooth show/hide as zoom-tier classes flip on the SVG. */
+  /* Smooth show/hide as opacity changes (driven by JS per-label
+   * thresholds and by the zoom-tier-1 hide rule below). */
   transition: opacity 160ms ease;
 }
 
-/* Tiered visibility. The SVG carries a zoom-tier-{n} class that
- * map.js updates whenever the user zooms; CSS uses that to decide
- * which tiers of labels to show.
+/* zoom-tier-1 (world view): all country labels are hidden so only
+ * continent labels show. The per-label opacity that map.js sets
+ * inline is bypassed by !important here — at world view we
+ * unconditionally suppress country labels regardless of requiredK.
  *
- *   zoom-tier-1 (k < 2):       continent labels only — country
- *                              labels and country borders fade so
- *                              the world reads as continents.
- *   zoom-tier-2 (2 ≤ k < 4):   country borders return; tier-1 and
- *                              tier-2 country labels visible;
- *                              continent labels hidden.
- *   zoom-tier-3 (k ≥ 4):       all country labels visible.
- *
- * Hidden labels use opacity rather than display:none so the smooth
- * transitions above work as the user zooms across a threshold. */
-
-/* At zoom-tier-1 (world view), no country labels and no continent
- * labels are visible from the country-label class — only the region
- * labels show. */
+ * At zoom-tier-2 and above, JS-controlled inline opacity takes over
+ * (each label appears once the country is wide enough to fit its
+ * name, computed per-country at init time). */
 .world-map.zoom-tier-1 .country-label {
-  opacity: 0;
-}
-.world-map.zoom-tier-2 .country-label-tier-3 {
-  opacity: 0;
-}
-
-.world-map.zoom-tier-2 .country-label-tier-1,
-.world-map.zoom-tier-2 .country-label-tier-2,
-.world-map.zoom-tier-3 .country-label-tier-1,
-.world-map.zoom-tier-3 .country-label-tier-2,
-.world-map.zoom-tier-3 .country-label-tier-3 {
-  opacity: 1;
+  opacity: 0 !important;
 }
 
 /* Country borders fade at zoom-tier-1 so the world reads as
  * continents rather than 200 individually-outlined countries.
- * Stroke is removed entirely (rather than just dimmed) because at
- * world view the borders add noise without information density.
- * Fills remain so the land is still distinguishable from ocean. */
+ * Stroke is removed (rather than just dimmed) because at world
+ * view the borders add noise without information density. Fills
+ * remain so land is still distinguishable from ocean. */
 .world-map.zoom-tier-1 .country {
   stroke-opacity: 0;
 }
@@ -217,9 +204,10 @@ body {
  * view. */
 .region-label {
   fill: #f3f4f6;
-  stroke: rgba(0, 0, 0, 0.7);
-  stroke-width: 4px;
+  stroke: rgba(0, 0, 0, 0.78);
+  stroke-width: 2.5px;
   paint-order: stroke fill;
+  vector-effect: non-scaling-stroke;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
