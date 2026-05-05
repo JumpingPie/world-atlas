@@ -141,6 +141,104 @@ body {
   opacity: 1;
 }
 
+/* ---------- Country name labels ----------
+ * Labels are SVG <text> nodes inside .map-labels. The parent group's
+ * font-size attribute is set by map.js and counter-scaled by the
+ * inverse of the zoom transform, so on-screen text size stays
+ * constant regardless of zoom level.
+ *
+ * paint-order:stroke fill puts the dark stroke behind the white fill,
+ * giving labels a subtle outline that keeps them legible over both
+ * land and ocean — important for an atlas where labels often cross
+ * coastlines or sit over light/dark land regions. */
+.country-label {
+  fill: #f3f4f6;
+  stroke: rgba(0, 0, 0, 0.7);
+  stroke-width: 3px;
+  paint-order: stroke fill;
+  font-weight: 500;
+  /* Letter-spacing makes small labels slightly more readable on a
+   * busy map. */
+  letter-spacing: 0.02em;
+  /* Labels never receive pointer events — clicks pass through to the
+   * country path beneath, so users can click a country regardless of
+   * label coverage. */
+  pointer-events: none;
+  /* Smooth show/hide as zoom-tier classes flip on the SVG. */
+  transition: opacity 160ms ease;
+}
+
+/* Tiered visibility. The SVG carries a zoom-tier-{n} class that
+ * map.js updates whenever the user zooms; CSS uses that to decide
+ * which tiers of labels to show.
+ *
+ *   zoom-tier-1 (k < 2):  show only tier 1 (largest ~25 countries)
+ *   zoom-tier-2 (2 ≤ k < 4): show tiers 1 and 2
+ *   zoom-tier-3 (k ≥ 4):  show all tiers
+ *
+ * Hidden labels use opacity rather than display:none so the smooth
+ * transition above works as the user zooms across a threshold. */
+.world-map.zoom-tier-1 .country-label-tier-2,
+.world-map.zoom-tier-1 .country-label-tier-3,
+.world-map.zoom-tier-2 .country-label-tier-3 {
+  opacity: 0;
+}
+
+.world-map.zoom-tier-1 .country-label-tier-1,
+.world-map.zoom-tier-2 .country-label-tier-1,
+.world-map.zoom-tier-2 .country-label-tier-2,
+.world-map.zoom-tier-3 .country-label-tier-1,
+.world-map.zoom-tier-3 .country-label-tier-2,
+.world-map.zoom-tier-3 .country-label-tier-3 {
+  opacity: 1;
+}
+
+/* ---------- Zoom controls ----------
+ * Small +/− buttons added by map.js to the top-left of the map area.
+ * Top-left because the panel occupies the right side when open;
+ * top-left stays unobstructed under all panel states. */
+.map-controls {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 5;
+}
+
+.map-control-btn {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  background: var(--color-panel-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-panel-border);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+  font-family: var(--font-sans);
+  /* Slight rounding on the outer corners so the two buttons read as
+   * a unified control pair, not two unrelated buttons. */
+}
+
+.map-control-btn:first-child {
+  border-radius: 4px 4px 0 0;
+}
+.map-control-btn:last-child {
+  border-radius: 0 0 4px 4px;
+}
+
+.map-control-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.map-control-btn:active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
 /* ---------- Country side panel ----------
  * Right-side overlay that slides in when a country is selected.
  * Width is capped on large screens; on narrow viewports it takes the
