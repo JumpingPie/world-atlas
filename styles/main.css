@@ -126,3 +126,185 @@ body {
 .map-error {
   color: #f85149;
 }
+
+/* Selection highlighting. map.js applies .is-selected to the chosen
+ * country and .is-dimmed to all the others when a selection is
+ * active; clears both classes when nothing is selected. */
+.country.is-dimmed {
+  opacity: 0.45;
+}
+
+.country.is-selected {
+  fill: var(--color-accent);
+  stroke: #ffffff;
+  stroke-width: 1.2px;
+  opacity: 1;
+}
+
+/* ---------- Country side panel ----------
+ * Right-side overlay that slides in when a country is selected.
+ * Width is capped on large screens; on narrow viewports it takes the
+ * full width minus a small inset so it remains usable on mobile. */
+.country-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(380px, calc(100vw - 1rem));
+  background: var(--color-panel-bg);
+  border-left: 1px solid var(--color-panel-border);
+  display: flex;
+  flex-direction: column;
+  /* Slide off-screen by default. The .is-open class added by
+   * src/core/panel.js animates it back into view. transform is used
+   * (not display:none) so the transition is smooth. */
+  transform: translateX(100%);
+  transition: transform 220ms ease;
+  /* Above the SVG so it visually overlays the map. */
+  z-index: 10;
+}
+
+.country-panel.is-open {
+  transform: translateX(0);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--color-panel-border);
+  flex-shrink: 0;
+}
+
+.panel-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.panel-close {
+  background: none;
+  border: none;
+  color: var(--color-text-dim);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.5rem;
+  border-radius: 4px;
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.panel-close:hover {
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.panel-cards {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* ---------- Generic card chrome ----------
+ * Shared by all card types under src/panels/. Card-specific styles
+ * live alongside their card definitions (when needed) but the base
+ * appearance is consistent so the panel reads as a unified surface. */
+.panel-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--color-panel-border);
+  border-radius: 6px;
+  padding: 0.85rem;
+  font-size: 0.9rem;
+}
+
+.panel-card .card-loading,
+.panel-card .card-empty,
+.panel-card .card-error {
+  color: var(--color-text-dim);
+  font-style: italic;
+}
+
+.panel-card .card-error {
+  color: #f85149;
+  font-style: normal;
+}
+
+.panel-card-error {
+  border-color: #f85149;
+}
+
+/* ---------- Stats card ----------
+ * Specific styling for src/panels/stats.js. Lives here rather than
+ * inline in the card module because CSS scoping is page-global anyway
+ * and grouping styles in main.css keeps theme tokens consistent. */
+.stats-flag {
+  display: block;
+  max-width: 100%;
+  max-height: 90px;
+  margin: 0 auto 0.6rem;
+  border-radius: 3px;
+  /* Many flags are mostly white or have white fields, which would be
+   * invisible on the dark panel background. A subtle border ensures
+   * the flag is always visually delineated. */
+  box-shadow: 0 0 0 1px var(--color-panel-border);
+}
+
+.stats-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.stats-official-name {
+  text-align: center;
+  color: var(--color-text-dim);
+  font-style: italic;
+  font-size: 0.85rem;
+  margin-bottom: 0.6rem;
+}
+
+.stats-grid {
+  display: grid;
+  /* Two-column layout: label column auto-sizes to its widest label,
+   * value column takes the rest. column-gap separates the two. */
+  grid-template-columns: max-content 1fr;
+  column-gap: 0.85rem;
+  row-gap: 0.4rem;
+  margin: 0.7rem 0 0;
+}
+
+.stats-grid dt {
+  color: var(--color-text-dim);
+  font-size: 0.82rem;
+}
+
+.stats-grid dd {
+  margin: 0;
+  font-size: 0.88rem;
+  /* Long values (lists of currencies, multi-name heads of state)
+   * should wrap rather than overflow the panel. */
+  overflow-wrap: anywhere;
+}
+
+.stats-source {
+  margin-top: 0.85rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--color-panel-border);
+  font-size: 0.78rem;
+  color: var(--color-text-dim);
+  text-align: right;
+}
+
+.stats-source a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.stats-source a:hover {
+  text-decoration: underline;
+}
