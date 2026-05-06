@@ -1,47 +1,55 @@
 // src/panels/summary.js
 //
-// Wikipedia summary card.
+// Wikipedia summary card with tabs.
 //
-// Renders for country selections only. Shows the lead paragraph(s)
-// of the country's English Wikipedia article, a thumbnail image (if
-// available), the article's short description as a tagline, and an
-// outbound link to read the full article.
+// Renders for country selections only. Two tabs by default:
 //
-// Lifecycle: render() returns a DOM node immediately containing a
-// loading placeholder, then chains two async fetches — first
-// wikidata-stats to resolve the Wikipedia title (cached after the
-// stats card has fetched it once, so usually free), then the
-// summary itself. If the user clicks a different country before
-// either resolves, isConnected on the node returns false and we
-// drop the stale result.
+//   - Lead: lead-paragraph extract from the Wikipedia REST summary
+//     endpoint (thumbnail, short description, and the article's
+//     opening paragraphs).
+//   - History: the article's "History" H2 section, fetched
+//     separately via the Action API only when the tab is activated.
+//
+// Both tabs share the same Wikipedia title, resolved up-front from
+// Wikidata (so we use the canonical sitelink rather than guessing
+// the title from the country's display name). The first fetch
+// (Wikidata stats) is usually cache-warm because the stats card
+// has already loaded it.
+//
+// The tabs helper handles loading/empty/error states for each tab
+// and caches results so re-clicking a previously-loaded tab is
+// instant — only the *first* visit to a tab triggers a network call.
 
+import { createTabs } from "../core/tabs.js";
 import { fetchCountryStats } from "../fetchers/wikidata-stats.js";
 import { fetchWikipediaSummary } from "../fetchers/wikipedia-summary.js";
+import { fetchWikipediaSection } from "../fetchers/wikipedia-section.js";
 
 /**
- * Build the populated card body once data is in hand.
+ * Build the Lead tab's content from a Wikipedia summary response.
+ * Returns the assembled DOM node, or null if there's nothing to show.
  *
- * extract_html is preferred over extract because Wikipedia's
- * extract sometimes includes inline emphasis (italics for foreign
+ * extract_html is preferred over plain extract because Wikipedia's
+ * extract sometimes contains inline emphasis (italics for foreign
  * terms, scientific names, etc.) that look strange when stripped to
- * plain text. The extract_html is small, well-formed, and from a
- * trusted source, so injecting it as innerHTML is safe here.
+ * plain text. The HTML is small and well-formed and comes from a
+ * trusted Wikimedia API, so injecting it via innerHTML is safe.
  */
-function renderSummaryBody(data) {
+function renderLead(data) {
+  if (!data) return null;
+  const div = document.createElement("div");
+  div.className = "summary-lead";
+
   const thumb = data.thumbnail
     ? `<img class="summary-thumb" src="${data.thumbnail}" alt="" />`
     : "";
 
-  // The short description is one sentence. Skip if it's identical to
-  // the title or empty (some entities just don't have one).
   const description =
-    data.description && data.description.toLowerCase() !== data.title.toLowerCase()
+    data.description &&
+    data.description.toLowerCase() !== (data.title ?? "").toLowerCase()
       ? `<div class="summary-desc">${data.description}</div>`
       : "";
 
-  // Use extract_html if present (preserves inline formatting); fall
-  // back to extract wrapped in a <p>. Both come from the same
-  // Wikimedia API response so we trust either one as safe to inline.
   const body = data.extractHtml
     ? `<div class="summary-extract">${data.extractHtml}</div>`
     : `<p class="summary-extract">${data.extract ?? ""}</p>`;
@@ -50,7 +58,48 @@ function renderSummaryBody(data) {
     ? `<div class="summary-source"><a href="${data.pageUrl}" target="_blank" rel="noopener">Read full article on Wikipedia &rarr;</a></div>`
     : "";
 
-  return `${thumb}${description}${body}${sourceLink}`;
+  div.innerHTML = `${thumb}${description}${body}${sourceLink}`;
+  return div;
+}
+
+/**
+ * Build the History tab's content from raw section HTML.
+ *
+ * Wikipedia's section HTML includes:
+ *   - <p> paragraphs of body text
+ *   - <h3>/<h4> headings for sub-sections
+ *   - <a href="/wiki/X"> internal links — we leave the path relative
+ *     and let CSS choose how they appear; clicking them navigates to
+ *     Wikipedia's site only because of the absolute URL we set below.
+ *   - <sup class="reference"> citation markers — left in for now;
+ *     a later polish pass can strip these via CSS for cleaner reading.
+ *
+ * We rewrite relative `/wiki/...` and `//upload.wikimedia.org/...`
+ * URLs to absolute en.wikipedia.org/upload origins so links and
+ * images work outside Wikipedia's own domain.
+ */
+function renderHistorySection(html) {
+  if (!html) return null;
+
+  const div = document.createElement("div");
+  div.className = "summary-section summary-history";
+  div.innerHTML = html;
+
+  // Rewrite relative links to absolute en.wikipedia.org URLs so
+  // clicking them goes somewhere useful. Open in a new tab.
+  div.querySelectorAll('a[href^="/wiki/"]').forEach((a) => {
+    a.setAttribute("href", `https://en.wikipedia.org${a.getAttribute("href")}`);
+    a.setAttribute("target", "_blank");
+    a.setAttribute("rel", "noopener");
+  });
+
+  // Same for protocol-relative image URLs (Wikipedia uses these for
+  // upload.wikimedia.org assets).
+  div.querySelectorAll('img[src^="//"]').forEach((img) => {
+    img.setAttribute("src", `https:${img.getAttribute("src")}`);
+  });
+
+  return div;
 }
 
 export default {
@@ -74,14 +123,12 @@ export default {
       <div class="card-loading">Loading summary from Wikipedia…</div>
     `;
 
-    // Two-step async chain: stats → title → summary. The first step
-    // is usually cache-warm because the stats card has already run
-    // its fetch by the time this card renders, so in practice this
-    // resolves the title instantly and only the summary GET is on
-    // the wire.
+    // Resolve the Wikipedia title from Wikidata first. Both tabs use
+    // the same title, so we do this once at card init rather than
+    // duplicating the lookup in each tab's load().
     fetchCountryStats(country.id)
       .then((stats) => {
-        if (!el.isConnected) return null;
+        if (!el.isConnected) return;
         if (!stats?.wikipediaTitle) {
           el.innerHTML = `
             <div class="card-empty">
@@ -89,17 +136,38 @@ export default {
               (ISO numeric ${country.id}).
             </div>
           `;
-          return null;
+          return;
         }
-        return fetchWikipediaSummary(stats.wikipediaTitle);
-      })
-      .then((summary) => {
-        if (!el.isConnected || !summary) return;
-        el.innerHTML = renderSummaryBody(summary);
+
+        const title = stats.wikipediaTitle;
+
+        // Each tab declares its async load function. The tabs helper
+        // calls these lazily on first activation and caches results.
+        const tabs = [
+          {
+            id: "lead",
+            label: "Lead",
+            load: () => fetchWikipediaSummary(title).then(renderLead),
+          },
+          {
+            id: "history",
+            label: "History",
+            // /^history$/i matches an exact "History" H2; falls back
+            // to any section containing "history" if the article uses
+            // a non-standard heading. The fetcher handles both cases.
+            load: () =>
+              fetchWikipediaSection(title, /^history$/i).then(
+                renderHistorySection
+              ),
+          },
+        ];
+
+        el.innerHTML = "";
+        el.appendChild(createTabs(tabs, { defaultTab: "lead" }));
       })
       .catch((err) => {
         if (!el.isConnected) return;
-        console.error("[summary card] fetch failed:", err);
+        console.error("[summary card] init fetch failed:", err);
         el.innerHTML = `
           <div class="card-error">
             Failed to load summary: ${err.message}

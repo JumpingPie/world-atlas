@@ -742,6 +742,110 @@ body {
   text-decoration: underline;
 }
 
+/* ---------- Card tabs ----------
+ * Generic tab strip for cards that have enough content to warrant
+ * sub-views (e.g. summary card with Lead / History / Economy tabs).
+ * Built by src/core/tabs.js — cards opt in by importing createTabs;
+ * cards that don't need tabs are unaffected.
+ *
+ * Visual: small underlined buttons in a row. Active tab takes the
+ * accent color and a heavier underline; inactive tabs are muted.
+ * The strip sits flush against the card's existing chrome — no
+ * box around the strip itself, just the bottom border. */
+.panel-card-tabs {
+  display: flex;
+  gap: 0.05rem;
+  border-bottom: 1px solid var(--color-panel-border);
+  margin: -0.2rem -0.2rem 0.6rem;
+}
+
+.panel-card-tab {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--color-text-dim);
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 500;
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+  /* margin-bottom:-1px so the active tab's underline overlaps the
+   * strip's own bottom border, creating a clean "active tab pulled
+   * through the line" effect rather than a stacked-double-line. */
+  margin-bottom: -1px;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+
+.panel-card-tab:hover {
+  color: var(--color-text);
+}
+
+.panel-card-tab.is-active {
+  color: var(--color-text);
+  border-bottom-color: var(--color-accent);
+}
+
+.panel-card-tab-content {
+  /* The content area sits below the strip. Height adapts to the
+   * active tab's content; cards using tabs should design their tab
+   * payloads to be of comparable size to avoid jumpy height. */
+}
+
+/* ---------- Wikipedia section content ----------
+ * The History tab (and similar future tabs) injects raw Wikipedia
+ * section HTML. These rules tame the visual quirks of that HTML so
+ * it reads like part of the panel rather than a foreign body.
+ *
+ * Wikipedia HTML brings: paragraphs, sub-headings, internal links,
+ * citation superscripts, and embedded thumbnails. We lay them out
+ * compactly and hide the citation markers — they're noise without
+ * the linked references view. */
+.summary-section {
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.summary-section p {
+  margin: 0 0 0.65rem;
+}
+
+.summary-section h3,
+.summary-section h4 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0.85rem 0 0.4rem;
+  color: var(--color-text);
+}
+
+.summary-section a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+.summary-section a:hover {
+  text-decoration: underline;
+}
+
+/* Citation superscripts ([1], [2], etc.) — hide entirely. They're
+ * noise without the linked References section, which we don't pull
+ * in here. Same for the [edit] section links Wikipedia injects. */
+.summary-section sup.reference,
+.summary-section .mw-editsection {
+  display: none;
+}
+
+/* Wikipedia's inline thumbnail figures — keep them but constrain
+ * to a reasonable size so they don't dominate the panel. */
+.summary-section figure,
+.summary-section .thumb {
+  max-width: 100%;
+  margin: 0.5rem 0;
+}
+
+.summary-section img {
+  max-width: 100%;
+  height: auto;
+}
+
 /* ---------- Summary card ----------
  * Shows the Wikipedia lead-paragraph extract with an optional
  * thumbnail floated to the right so prose flows around it. The
