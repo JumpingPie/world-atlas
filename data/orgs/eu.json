@@ -1,0 +1,18 @@
+{
+  "_schema": "org-membership/v1",
+  "_generated": "2026-05-04T00:00:00Z",
+  "_source": "hand-curated",
+  "_notes": [
+    "European Union membership as of May 2026: 27 member states. Croatia (2013) is the most recent accession; Brexit removed the United Kingdom in January 2020 and it is correctly absent. Candidate countries (Albania, Moldova, Montenegro, North Macedonia, Serbia, Türkiye, Ukraine, etc.) are NOT included — only full members.",
+    "Update procedure: edit the members list and bump _generated."
+  ],
+  "id": "eu",
+  "name": "European Union",
+  "shortName": "EU",
+  "founded": "1993",
+  "members": [
+    "040", "056", "100", "191", "196", "203", "208", "233", "246",
+    "250", "276", "300", "348", "372", "380", "428", "440", "442",
+    "470", "528", "616", "620", "642", "703", "705", "724", "752"
+  ]
+}

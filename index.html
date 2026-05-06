@@ -210,6 +210,8 @@
       import { initPanel } from "./src/core/panel.js";
       import { cycleTheme, getTheme, listThemes } from "./src/core/theme.js";
       import { on, getCurrentSelection } from "./src/core/state.js";
+      import { initLayerManager } from "./src/core/layer-manager.js";
+      import { initLayerControls } from "./src/core/layer-controls.js";
 
       const container = document.getElementById("map-container");
       const panelContainer = document.getElementById("country-panel");
@@ -356,6 +358,15 @@
         // import the handle from where it's stored, not via the global.
         // Removed in a later section once we have a proper app shell.
         window.__atlas = { mapHandle };
+
+        // Layer system wire-up. The manager subscribes to
+        // state.activeLayers and renders layers as they're toggled
+        // on; the controls populate the left panel with toggle UI
+        // for every layer in src/layers/index.js.
+        initLayerManager(mapHandle);
+        initLayerControls(
+          document.querySelector("#left-panel .panel-cards")
+        );
 
         // Loading message removal happens after init resolves so users
         // don't see an empty map flash before the geometry paints.

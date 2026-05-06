@@ -1,0 +1,21 @@
+{
+  "_schema": "org-membership/v1",
+  "_generated": "2026-05-04T00:00:00Z",
+  "_source": "hand-curated",
+  "_notes": [
+    "BRICS membership as of May 2026: 10 member states.",
+    "  - Founding 5 (BRIC, then BRICS): Brazil, Russia, India, China; South Africa joined 2010.",
+    "  - 2024 expansion: Egypt, Ethiopia, Iran, UAE joined 1 January 2024.",
+    "  - 2025 expansion: Indonesia joined 1 January 2025.",
+    "  - Saudi Arabia was invited in 2023 but its full membership status remains unclear; not included.",
+    "  - Argentina was invited in 2023 but withdrew before joining; not included.",
+    "Update procedure: edit the members list and bump _generated."
+  ],
+  "id": "brics",
+  "name": "BRICS",
+  "shortName": "BRICS",
+  "founded": "2009",
+  "members": [
+    "076", "156", "231", "356", "360", "364", "643", "710", "784", "818"
+  ]
+}

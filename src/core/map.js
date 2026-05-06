@@ -218,9 +218,16 @@ export async function initMap(container) {
   // capitals) still resolve correctly.
   const labelData = countries.features
     .map((f) => {
-      const [cx, cy] = path.centroid(f);
+      // For multi-polygon features (countries with disparate
+      // territories like France's Guiana/Réunion or Norway's
+      // Svalbard), compute centroid and bounds on the LARGEST
+      // polygon only — using the whole feature would area-weight
+      // the centroid into the ocean. See pickLabelPolygon for the
+      // rationale and pickLargestPolygon for the geometry math.
+      const labelFeature = pickLabelPolygon(f);
+      const [cx, cy] = path.centroid(labelFeature);
       if (!Number.isFinite(cx) || !Number.isFinite(cy)) return null;
-      const bounds = path.bounds(f);
+      const bounds = path.bounds(labelFeature);
       const bboxWidth = Math.max(1, bounds[1][0] - bounds[0][0]);
       const name = f.properties?.name ?? "";
       const labelWidth = name.length * 0.55 * LABEL_BASE_SIZE;
@@ -228,7 +235,11 @@ export async function initMap(container) {
         2,
         Math.min(8, labelWidth / bboxWidth)
       );
-      return { feature: f, cx, cy, requiredK, name };
+      // We retain the feature (full geometry) for click hits but
+      // also retain labelFeature (mainland-only) for refit() to
+      // recompute against on resize without redoing the largest-
+      // polygon search.
+      return { feature: f, labelFeature, cx, cy, requiredK, name };
     })
     .filter((d) => d != null);
 
@@ -391,14 +402,17 @@ export async function initMap(container) {
       .attr("d", path(d3.geoGraticule10()));
 
     // Country labels: recompute centroid and requiredK in place.
+    // We use d.labelFeature (the largest polygon, picked at init)
+    // rather than d.feature so multi-territory countries don't have
+    // their centroids pulled into the ocean by overseas islands.
     // The bound datum is mutated, so the next zoom-handler tick
     // will see the new requiredK without rebinding.
     labelsGroup.selectAll("text.country-label").attr("transform", function (d) {
-      const [cx, cy] = path.centroid(d.feature);
+      const [cx, cy] = path.centroid(d.labelFeature);
       if (!Number.isFinite(cx)) return null;
       d.cx = cx;
       d.cy = cy;
-      const bounds = path.bounds(d.feature);
+      const bounds = path.bounds(d.labelFeature);
       const bboxWidth = Math.max(1, bounds[1][0] - bounds[0][0]);
       const labelWidth = d.name.length * 0.55 * LABEL_BASE_SIZE;
       d.requiredK = Math.max(2, Math.min(8, labelWidth / bboxWidth));
@@ -518,6 +532,57 @@ function setupTrackpadGestures(svg, zoom) {
       svg.call(zoom.translateBy, -event.deltaX, -event.deltaY);
     }
   });
+}
+
+/**
+ * Pick a substitute Feature for label positioning when a country
+ * has disparate territories.
+ *
+ * Why: d3.geoPath().centroid() and .bounds() compute on the WHOLE
+ * geometry of the feature. For a Feature whose territories span
+ * thousands of kilometers (France's mainland + French Guiana +
+ * Réunion + La Polynésie, USA's mainland + Alaska + Hawaii, Norway
+ * + Svalbard, etc.), the area-weighted centroid lands somewhere
+ * unhelpful — often the ocean — and the bounding box covers an
+ * implausibly wide span which makes requiredK far too low.
+ *
+ * Fix: for MultiPolygon features, return a synthetic Feature
+ * containing only the largest polygon by spherical area. Single-
+ * polygon features pass through unchanged. The original feature is
+ * still used for hit testing and full-geometry rendering — we only
+ * substitute for label-position calculations.
+ *
+ * The synthetic Feature retains the original's properties, which
+ * is what callers use to read country name, ISO code, etc.
+ */
+function pickLabelPolygon(feature) {
+  if (feature.geometry?.type !== "MultiPolygon") return feature;
+
+  let biggestArea = -Infinity;
+  let biggestCoords = null;
+  for (const polyCoords of feature.geometry.coordinates) {
+    const polyFeature = {
+      type: "Feature",
+      geometry: { type: "Polygon", coordinates: polyCoords },
+    };
+    // d3.geoArea returns spherical area in steradians — invariant
+    // under projection, so this works regardless of which projection
+    // is currently active.
+    const area = d3.geoArea(polyFeature);
+    if (area > biggestArea) {
+      biggestArea = area;
+      biggestCoords = polyCoords;
+    }
+  }
+
+  if (!biggestCoords) return feature;
+
+  return {
+    type: "Feature",
+    geometry: { type: "Polygon", coordinates: biggestCoords },
+    properties: feature.properties,
+    id: feature.id,
+  };
 }
 
 /**

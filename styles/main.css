@@ -742,6 +742,120 @@ body {
   text-decoration: underline;
 }
 
+/* ---------- Layer overlays ----------
+ * Layer paths sit in #map-overlays (between countries and labels in
+ * the SVG group order). Each individual layer's render() sets its
+ * own fill color; this rule sets the shared base behavior.
+ *
+ * pointer-events:none is set as an attribute on each path inside
+ * the layer modules so clicks pass through to the country beneath.
+ *
+ * Layers are hidden at zoom-tier-1 (world view) because the merged
+ * region polygons cover the country geometry there, so a layer
+ * highlight would either visually conflict with regions or paint
+ * over them inconsistently. Layers fade in at zoom-tier-2 when
+ * individual countries become visible. Layers that want to behave
+ * differently at world view (a future "global trade routes" layer,
+ * say) can override this rule via their own layer-feature-* class. */
+.layer-feature {
+  vector-effect: non-scaling-stroke;
+}
+
+.world-map.zoom-tier-1 .map-overlays {
+  display: none;
+}
+
+/* ---------- Layer controls (left panel) ----------
+ * Layer toggles grouped by category, each rendered as a button with
+ * a colored swatch matching the layer's signature color and a label.
+ * Clicking flips state.activeLayers (the layer manager reacts).
+ *
+ * The button states:
+ *   - default: muted outline only
+ *   - hover: subtle background tint (consistent with other panel
+ *     buttons elsewhere in the app)
+ *   - is-active: stronger background + visible border, plus the
+ *     swatch gets a small white halo so the on state reads at a
+ *     glance even on light themes. */
+.layer-category {
+  /* Inherits .panel-card chrome — just adds internal layout. */
+}
+
+.layer-category-name {
+  margin: 0 0 0.5rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-dim);
+}
+
+.layer-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.layer-item {
+  margin: 0;
+}
+
+.layer-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  background: transparent;
+  color: var(--color-text);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 0.4rem 0.55rem;
+  font-family: var(--font-sans);
+  font-size: 0.86rem;
+  cursor: pointer;
+  text-align: left;
+  transition: background 100ms ease, border-color 100ms ease;
+}
+
+.layer-toggle:hover {
+  background: var(--color-hover-overlay);
+  border-color: var(--color-panel-border);
+}
+
+.layer-toggle.is-active {
+  background: var(--color-active-overlay);
+  border-color: var(--color-panel-border);
+}
+
+.layer-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  /* Inset shadow gives the swatch a defined edge even when its
+   * fill color is very light (e.g. EU gold against a cream
+   * background). Without this, light swatches would visually
+   * dissolve into the panel. */
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2);
+}
+
+.layer-toggle.is-active .layer-swatch {
+  /* When the layer is on, give the swatch a small bright halo so
+   * the active state is visible at a glance from across the panel
+   * — useful when several toggles are listed in a row. */
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.25),
+    0 0 0 2px rgba(255, 255, 255, 0.18);
+}
+
+.layer-label {
+  flex: 1;
+}
+
 /* ---------- Card tabs ----------
  * Generic tab strip for cards that have enough content to warrant
  * sub-views (e.g. summary card with Lead / History / Economy tabs).
