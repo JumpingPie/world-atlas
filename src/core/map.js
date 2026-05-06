@@ -29,7 +29,12 @@
 //   - Click-and-drag → pan (always available, mouse-friendly)
 //   - On-screen +/− buttons → zoom (mouse-only safety net since we
 //     suppressed wheel-zoom in favor of trackpad-pan)
-//   - Mouse near edge of map → auto-pan in that direction (RTS-style)
+//
+// Edge-of-screen autopan was tried and removed: with multi-panel UI
+// chrome around the map, moving the mouse to reach buttons (Layers,
+// Theme, the panel close X, the timeline handle) was triggering pan
+// when the user was just navigating to a control. Drag-pan and
+// trackpad-swipe cover the same need without that misfire.
 
 import * as d3 from "d3";
 import * as topojson from "topojson-client";
@@ -55,14 +60,6 @@ const REGIONS_DATA_URL = "data/geo/regions.json";
  *  font-size is counter-scaled by the inverse of the zoom transform's k
  *  so labels stay this size regardless of zoom level. */
 const LABEL_BASE_SIZE = 11;
-
-/** Distance from the SVG's edge (in pixels) at which auto-pan kicks in. */
-const EDGE_PAN_THRESHOLD = 30;
-
-/** Maximum auto-pan speed in pixels per animation frame, reached when
- *  the cursor is exactly at the edge. Speed ramps linearly from 0 at
- *  the threshold boundary to this value at the edge. */
-const EDGE_PAN_MAX_SPEED = 8;
 
 /** Base on-screen size of region labels, in pixels. Larger than
  *  country labels because region labels stand alone at the world
@@ -308,11 +305,6 @@ export async function initMap(container) {
   // Pan/zoom behavior. Trackpad-friendly: see the file header comment.
   // ------------------------------------------------------------------
 
-  // Tracks whether the user is mid-gesture (drag or wheel-driven pan/
-  // zoom). Edge auto-pan checks this so it doesn't compound with an
-  // active interaction.
-  let isInteracting = false;
-
   const zoom = d3
     .zoom()
     .scaleExtent([1, 8])
@@ -334,9 +326,6 @@ export async function initMap(container) {
       if (event.type === "wheel") return false;
       return !event.button;
     })
-    .on("start", () => {
-      isInteracting = true;
-    })
     .on("zoom", (event) => {
       const k = event.transform.k;
       root.attr("transform", event.transform);
@@ -356,18 +345,12 @@ export async function initMap(container) {
       // and fade country borders at the lowest zoom.
       const tier = k >= 4 ? 3 : k >= 2 ? 2 : 1;
       svg.attr("class", `world-map zoom-tier-${tier}`);
-    })
-    .on("end", () => {
-      isInteracting = false;
     });
 
   svg.call(zoom);
 
   // Custom wheel handler: trackpad pinch zooms, plain wheel pans.
   setupTrackpadGestures(svg, zoom);
-
-  // Auto-pan when the cursor is near the edge of the map area.
-  setupEdgePan(svg, zoom, () => isInteracting);
 
   // On-screen zoom buttons. We need these because the trackpad-first
   // wheel scheme above leaves mouse-wheel users with no scroll-zoom.
@@ -535,78 +518,6 @@ function setupTrackpadGestures(svg, zoom) {
       svg.call(zoom.translateBy, -event.deltaX, -event.deltaY);
     }
   });
-}
-
-/**
- * Auto-pan the map when the cursor enters a band near the edge.
- *
- * Why a band rather than only the exact edge: an exact-edge trigger
- * is fiddly to hit and provides no smooth ramp-up. A band gives the
- * user analog control — closer to the edge means faster pan.
- *
- * @param {d3.Selection} svg
- * @param {d3.ZoomBehavior} zoom
- * @param {() => boolean} isInteracting - Predicate that returns true
- *     while the user is mid-drag/wheel. Edge-pan suspends itself in
- *     that case so it doesn't compound with explicit input.
- */
-function setupEdgePan(svg, zoom, isInteracting) {
-  let mouseInside = false;
-  let mouseX = 0;
-  let mouseY = 0;
-  let raf = null;
-  const node = svg.node();
-
-  node.addEventListener("mousemove", (event) => {
-    const rect = node.getBoundingClientRect();
-    mouseX = event.clientX - rect.left;
-    mouseY = event.clientY - rect.top;
-    mouseInside = true;
-    // Schedule one tick if not already scheduled. The tick re-arms
-    // itself only while we're still in an edge zone, so a cursor
-    // resting in the middle of the map costs zero per-frame work.
-    if (raf == null) raf = requestAnimationFrame(tick);
-  });
-
-  node.addEventListener("mouseleave", () => {
-    mouseInside = false;
-  });
-
-  function tick() {
-    raf = null;
-    if (!mouseInside || isInteracting()) return;
-
-    const rect = node.getBoundingClientRect();
-    const w = rect.width;
-    const h = rect.height;
-    let dx = 0;
-    let dy = 0;
-
-    if (mouseX < EDGE_PAN_THRESHOLD) {
-      dx = EDGE_PAN_MAX_SPEED * (1 - mouseX / EDGE_PAN_THRESHOLD);
-    } else if (mouseX > w - EDGE_PAN_THRESHOLD) {
-      dx =
-        -EDGE_PAN_MAX_SPEED *
-        (1 - (w - mouseX) / EDGE_PAN_THRESHOLD);
-    }
-
-    if (mouseY < EDGE_PAN_THRESHOLD) {
-      dy = EDGE_PAN_MAX_SPEED * (1 - mouseY / EDGE_PAN_THRESHOLD);
-    } else if (mouseY > h - EDGE_PAN_THRESHOLD) {
-      dy =
-        -EDGE_PAN_MAX_SPEED *
-        (1 - (h - mouseY) / EDGE_PAN_THRESHOLD);
-    }
-
-    if (dx !== 0 || dy !== 0) {
-      svg.call(zoom.translateBy, dx, dy);
-      // Still in edge zone → keep ticking.
-      raf = requestAnimationFrame(tick);
-    }
-    // If dx and dy are both 0 the cursor is in the middle; we don't
-    // re-schedule. The next mousemove will start a new tick if/when
-    // the cursor re-enters the edge band.
-  }
 }
 
 /**
