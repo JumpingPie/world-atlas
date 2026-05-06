@@ -57,45 +57,147 @@
     </script>
   </head>
   <body>
+    <!--
+      App shell — three-panel layout.
+
+      Structure:
+        #app (column flex)
+          .app-header
+          .app-body (row flex)
+            #left-panel  (collapsed: width 0; expanded: ~320px)
+            #map-container (flex:1, takes remaining space)
+            #country-panel (collapsed: width 0; expanded: ~380px)
+          #bottom-panel (collapsed: height 0; expanded: ~240px)
+
+      Each panel collapses to zero in its primary axis when closed
+      and expands to its declared size when .is-open is applied.
+      The map container is a flex sibling so it auto-resizes when
+      panels toggle — no JS layout math needed. A ResizeObserver in
+      map.js re-fits the projection so the world geometry uses the
+      newly available space rather than just being letterboxed by
+      the SVG's preserveAspectRatio.
+
+      Right panel opens automatically when the user selects a
+      country or region (via panel.js subscribing to state).
+      Left and bottom panels are manual: header buttons toggle
+      their .is-open class.
+    -->
     <div id="app">
       <header class="app-header">
         <h1>world-atlas</h1>
         <span class="subtitle">multilateral relations &middot; sovereign states</span>
-        <!--
-          Theme toggle. Label is set at startup (and updated on click)
-          to show the *next* theme that clicking will switch to, so it
-          reads as a verb ("Atlas" = "switch to atlas") rather than as
-          an indicator of the current state.
-        -->
-        <button class="theme-toggle" id="theme-toggle" type="button">
-          Theme
-        </button>
+        <div class="header-controls">
+          <!--
+            Toggles for the side and bottom panels. data-target points
+            at the panel's element ID so the click handler can find it
+            without a separate registration step.
+          -->
+          <button
+            class="header-btn"
+            id="toggle-left"
+            data-target="left-panel"
+            type="button"
+          >
+            Layers
+          </button>
+          <!--
+            Timeline button intentionally absent. The bottom timeline
+            panel is selection-gated: it has nothing to show when no
+            country or region is selected. Discovery happens through
+            the handle at the bottom of the screen, which appears as
+            soon as a selection is made.
+          -->
+
+          <!--
+            Theme toggle. Label set at startup (and updated on click)
+            to show the *next* theme — reads as a verb ("Atlas" =
+            "switch to atlas") rather than as a current-state indicator.
+          -->
+          <button class="theme-toggle" id="theme-toggle" type="button">
+            Theme
+          </button>
+        </div>
       </header>
-      <main id="map-container">
+
+      <div class="app-body">
         <!--
-          Map initializes into this container. A loading message is
-          shown until the TopoJSON resolves, then replaced by the SVG.
+          Left panel: layer toggles, filters, search. Stub for
+          Section 5; populated in Section 7 when the layer system
+          gets real toggles.
         -->
-        <div class="map-loading">Loading world map…</div>
+        <aside
+          id="left-panel"
+          class="side-panel left-panel"
+          aria-label="Layers and controls"
+        >
+          <header class="panel-header">
+            <h2 class="panel-title">Layers</h2>
+            <button class="panel-close" data-target="left-panel" aria-label="Close panel">&times;</button>
+          </header>
+          <div class="panel-cards">
+            <section class="panel-card">
+              <p class="panel-stub">
+                Layer toggles (NATO, EU, BRICS, conflicts, trade, etc.)
+                will appear here in a later section.
+              </p>
+            </section>
+          </div>
+        </aside>
+
+        <main id="map-container">
+          <!--
+            Map initializes into this container. A loading message is
+            shown until the TopoJSON resolves, then replaced by the SVG.
+          -->
+          <div class="map-loading">Loading world map…</div>
+
+          <!--
+            Paper effects overlay. Hidden by default; activated by the
+            atlas theme. aria-hidden because it's purely decorative.
+          -->
+          <div class="paper-effects" aria-hidden="true"></div>
+        </main>
 
         <!--
-          Paper effects overlay. Hidden by default; activated by the
-          atlas theme to add aged-paper vignette, grain, and fold
-          lines. Lives inside map-container so it scales with the map
-          area, sits above the SVG (z-index:1) but below the panel
-          (z-index:10) and zoom controls (z-index:5). aria-hidden
-          because it's purely decorative.
+          Right panel: selection details (country / region). Auto-
+          opens when state.js publishes a non-null selection; closes
+          when selection clears.
         -->
-        <div class="paper-effects" aria-hidden="true"></div>
+        <aside
+          id="country-panel"
+          class="side-panel right-panel"
+          aria-label="Selection details"
+        ></aside>
+      </div>
 
-        <!--
-          Country side panel. Lives inside the map container so it
-          overlays the map (rather than reflowing the layout). The
-          panel is hidden by default and animates in via the .is-open
-          class added by src/core/panel.js when a country is selected.
-        -->
-        <aside id="country-panel" class="country-panel" aria-label="Country details"></aside>
-      </main>
+      <!--
+        Bottom panel: timeline. Selection-gated drawer.
+
+          - Hidden entirely (height 0) when no country or region is
+            selected. The user has nothing to time-line, so the panel
+            isn't even an affordance.
+          - When a selection is made (.is-available added), the
+            32px handle slides up. The panel itself stays mostly
+            collapsed; only the handle is visible.
+          - Clicking the handle (or dragging it up) expands the
+            panel to its full height. Clicking again or dragging
+            down collapses it back to handle-only.
+          - Clearing the selection collapses the panel entirely.
+
+        Populated in Section 8 with the actual era/event timeline.
+      -->
+      <div id="bottom-panel" class="bottom-panel" aria-label="Timeline">
+        <button class="bottom-panel-handle" type="button" aria-label="Toggle timeline">
+          <span class="bottom-panel-arrow" aria-hidden="true">&#9650;</span>
+          <span class="bottom-panel-label">Timeline</span>
+        </button>
+        <div class="bottom-panel-content">
+          <p class="panel-stub">
+            A horizontal timeline with era segments and event drill-
+            downs will appear here in a later section.
+          </p>
+        </div>
+      </div>
     </div>
 
     <!--
@@ -107,6 +209,7 @@
       import { initMap } from "./src/core/map.js";
       import { initPanel } from "./src/core/panel.js";
       import { cycleTheme, getTheme, listThemes } from "./src/core/theme.js";
+      import { on, getCurrentSelection } from "./src/core/state.js";
 
       const container = document.getElementById("map-container");
       const panelContainer = document.getElementById("country-panel");
@@ -126,6 +229,115 @@
       themeBtn.addEventListener("click", () => {
         cycleTheme();
         themeBtn.textContent = nextThemeLabel();
+      });
+
+      // Panel toggles for the side panels (currently just Layers).
+      // Any button with data-target points at a panel element by ID —
+      // clicking flips the panel's .is-open class and the button's
+      // own .is-active class so the user can see which panels are
+      // open. This handles both the header buttons and the panels'
+      // own close buttons.
+      document.querySelectorAll("[data-target]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const targetId = btn.dataset.target;
+          const panel = document.getElementById(targetId);
+          if (!panel) return;
+          const opening = !panel.classList.contains("is-open");
+          panel.classList.toggle("is-open", opening);
+          document
+            .querySelectorAll(
+              `.header-btn[data-target="${targetId}"]`
+            )
+            .forEach((b) => b.classList.toggle("is-active", opening));
+        });
+      });
+
+      // Bottom panel — selection-gated drawer with handle.
+      //
+      // Lifecycle:
+      //   - .is-available added when a selection exists; removed when
+      //     it clears. Controls whether the handle is visible at all.
+      //   - .is-open toggled by user interaction with the handle.
+      //     Clearing the selection also clears .is-open so the panel
+      //     fully collapses.
+      //
+      // Interaction:
+      //   - Click the handle: toggle open/closed.
+      //   - Drag the handle up/down: panel grows/shrinks live.
+      //     On release, snaps to whichever extreme is closer.
+      //
+      // We distinguish click vs drag by movement threshold: a
+      // mousedown→mouseup with less than 4px of vertical movement is
+      // a click; otherwise it's treated as a drag.
+      const bottomPanel = document.getElementById("bottom-panel");
+      const bottomHandle = bottomPanel.querySelector(".bottom-panel-handle");
+
+      function syncBottomPanelAvailability() {
+        const hasSelection = !!getCurrentSelection();
+        bottomPanel.classList.toggle("is-available", hasSelection);
+        if (!hasSelection) bottomPanel.classList.remove("is-open");
+      }
+      on("selectedCountry", syncBottomPanelAvailability);
+      on("selectedRegion", syncBottomPanelAvailability);
+
+      const HANDLE_HEIGHT = 32;
+      const OPEN_HEIGHT_PX = Math.min(280, window.innerHeight * 0.38);
+      const DRAG_THRESHOLD = 4;
+
+      let dragStartY = 0;
+      let dragStartHeight = 0;
+      let isDragging = false;
+
+      function onDragMove(event) {
+        const dy = dragStartY - event.clientY;
+        if (!isDragging && Math.abs(dy) > DRAG_THRESHOLD) {
+          isDragging = true;
+          // Disable the height transition while dragging — otherwise
+          // each pixel of mouse movement would animate over 220ms,
+          // making the drag feel laggy and rubber-banded.
+          bottomPanel.style.transition = "none";
+        }
+        if (!isDragging) return;
+        const maxHeight = Math.min(window.innerHeight * 0.6, 600);
+        const newHeight = Math.max(
+          HANDLE_HEIGHT,
+          Math.min(maxHeight, dragStartHeight + dy)
+        );
+        bottomPanel.style.height = `${newHeight}px`;
+        bottomPanel.style.flexBasis = `${newHeight}px`;
+      }
+
+      function onDragEnd() {
+        document.removeEventListener("mousemove", onDragMove);
+        document.removeEventListener("mouseup", onDragEnd);
+
+        const finalHeight = bottomPanel.offsetHeight;
+        // Reset inline overrides so CSS takes back control. The
+        // transition style is cleared too so the next class change
+        // animates normally.
+        bottomPanel.style.height = "";
+        bottomPanel.style.flexBasis = "";
+        bottomPanel.style.transition = "";
+
+        if (isDragging) {
+          // Snap to whichever endpoint is closer. The midpoint
+          // between handle-only and fully-open is the threshold.
+          const midpoint = (HANDLE_HEIGHT + OPEN_HEIGHT_PX) / 2;
+          bottomPanel.classList.toggle("is-open", finalHeight > midpoint);
+        } else {
+          // No drag — treat as a click and toggle.
+          bottomPanel.classList.toggle("is-open");
+        }
+        isDragging = false;
+      }
+
+      bottomHandle.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        dragStartY = event.clientY;
+        dragStartHeight = bottomPanel.offsetHeight;
+        isDragging = false;
+        document.addEventListener("mousemove", onDragMove);
+        document.addEventListener("mouseup", onDragEnd);
       });
 
       // Panel can be initialized synchronously; it just listens for

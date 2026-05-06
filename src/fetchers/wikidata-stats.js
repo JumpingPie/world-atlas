@@ -78,9 +78,18 @@ SELECT
   (GROUP_CONCAT(DISTINCT ?headOfStateLabel_; separator="|") AS ?headOfStateLabels)
   (GROUP_CONCAT(DISTINCT ?headOfGovernmentLabel_; separator="|") AS ?headOfGovernmentLabels)
   (GROUP_CONCAT(DISTINCT ?officialLanguageLabel_; separator="|") AS ?officialLanguageLabels)
+  (SAMPLE(?wpArticle_) AS ?wpArticle)
 WHERE {
   ?country wdt:P299 "${padded}" .
   OPTIONAL { ?country wdt:P1448 ?officialName . FILTER(LANG(?officialName) = "en") }
+  # English Wikipedia sitelink. Used downstream by the wikipedia-summary
+  # fetcher so we resolve titles from Wikidata's authoritative mapping
+  # rather than guessing from country names (which fails for cases like
+  # Georgia-the-country vs. Georgia-the-state).
+  OPTIONAL {
+    ?wpArticle_ schema:about ?country ;
+                schema:isPartOf <https://en.wikipedia.org/> .
+  }
   OPTIONAL { ?country wdt:P297 ?iso2 . }
   OPTIONAL { ?country wdt:P298 ?iso3 . }
   OPTIONAL { ?country wdt:P1082 ?population_ . }
@@ -198,7 +207,34 @@ function normalizeRow(row, isoNumeric) {
 
     // Media
     flagImage: v("flagImage") ?? null,
+
+    // Wikipedia article title, derived from the en.wikipedia.org
+    // sitelink URL. Null if the country has no English Wikipedia
+    // entry (rare; mostly historical or reserved ISO codes).
+    wikipediaTitle: extractWikipediaTitle(v("wpArticle")),
   };
+}
+
+/**
+ * Extract a Wikipedia page title from an en.wikipedia.org article URL.
+ * Wikipedia titles in URLs use underscores for spaces and percent-
+ * encoding for non-ASCII; we decode both so the result is the
+ * human-readable title (which the REST API also accepts).
+ *
+ * @param {string|undefined} url - e.g. "https://en.wikipedia.org/wiki/Bosnia_and_Herzegovina"
+ * @returns {string|null}        - e.g. "Bosnia and Herzegovina"
+ */
+function extractWikipediaTitle(url) {
+  if (!url) return null;
+  const match = url.match(/\/wiki\/(.+)$/);
+  if (!match) return null;
+  try {
+    return decodeURIComponent(match[1]).replace(/_/g, " ");
+  } catch {
+    // Malformed percent-encoding — return the raw string with
+    // underscores converted, which is still a valid Wikipedia title.
+    return match[1].replace(/_/g, " ");
+  }
 }
 
 /**

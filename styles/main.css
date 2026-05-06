@@ -78,17 +78,29 @@ body {
 }
 
 #app {
-  display: grid;
-  grid-template-rows: auto 1fr;
+  display: flex;
+  flex-direction: column;
   height: 100vh;
 }
 
 .app-header {
+  flex: 0 0 auto;
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--color-panel-border);
   display: flex;
   align-items: center;
   gap: 1rem;
+}
+
+/* The middle row: left panel | map | right panel.
+ * min-height:0 is critical — without it the flex children won't
+ * shrink below their content size, which would break the layout
+ * when panels are full of content. */
+.app-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
 }
 
 .app-header h1 {
@@ -103,12 +115,22 @@ body {
   font-size: 0.85rem;
 }
 
-/* Push the theme toggle to the right edge of the header. The flex
- * container gap doesn't push items to the end on its own — this
- * margin-left:auto trick is the standard CSS way to do it without
- * adding a wrapper element. */
-.app-header .theme-toggle {
+/* Right-aligned cluster of header buttons (panel toggles + theme).
+ * margin-left:auto pushes the cluster to the right edge of the
+ * header without needing a separate wrapper. */
+.app-header .header-controls {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Shared button style for header controls. Used by panel toggles
+ * (Layers, Timeline) and the theme toggle. The .is-active state
+ * (applied by the toggle handler when the corresponding panel is
+ * open) provides visual feedback on which panels are currently up. */
+.app-header .header-btn,
+.app-header .theme-toggle {
   background: transparent;
   color: var(--color-text-dim);
   border: 1px solid var(--color-panel-border);
@@ -120,15 +142,24 @@ body {
   transition: background 120ms ease, color 120ms ease;
 }
 
+.app-header .header-btn:hover,
 .app-header .theme-toggle:hover {
   background: var(--color-hover-overlay);
   color: var(--color-text);
 }
 
+.app-header .header-btn.is-active {
+  background: var(--color-active-overlay);
+  color: var(--color-text);
+}
+
 #map-container {
+  flex: 1 1 auto;
+  /* min-width:0 lets the flex item shrink below its content size,
+   * which is what enables side panels to grow into space the map
+   * gives up rather than overflowing the viewport. */
+  min-width: 0;
   position: relative;
-  width: 100%;
-  height: 100%;
   overflow: hidden;
 }
 
@@ -404,31 +435,170 @@ body {
   background: var(--color-active-overlay);
 }
 
-/* ---------- Country side panel ----------
- * Right-side overlay that slides in when a country is selected.
- * Width is capped on large screens; on narrow viewports it takes the
- * full width minus a small inset so it remains usable on mobile. */
-.country-panel {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: min(380px, calc(100vw - 1rem));
+/* ---------- Side and bottom panels ----------
+ *
+ * All three panels (left, right, bottom) live as flex siblings in
+ * the layout — opening and closing them resizes the map by reflow
+ * rather than overlaying the map.
+ *
+ * Animation: each panel collapses to zero in its primary axis when
+ * closed, expands to its declared size when .is-open is added.
+ * Width transitions on flex items are well-supported in modern
+ * browsers and produce the same "slide in from the side" feel users
+ * expect, but with the map auto-resizing rather than being covered.
+ *
+ * Rights to a panel:
+ *   - Left and bottom open via header buttons.
+ *   - Right (the country/region detail panel) opens automatically
+ *     when state.js publishes a non-null selection (managed by
+ *     src/core/panel.js — that module just toggles .is-open here).
+ *
+ * Width target uses min() so on narrow viewports the panel doesn't
+ * push the map to a tiny strip; the map keeps at least ~30% of
+ * width even when both side panels are open on phones. */
+.side-panel {
+  flex: 0 0 0;
+  width: 0;
+  /* overflow:hidden so the contents are clipped at the panel's
+   * current width rather than spilling over the map during the
+   * transition. */
+  overflow: hidden;
   background: var(--color-panel-bg);
-  border-left: 1px solid var(--color-panel-border);
   display: flex;
   flex-direction: column;
-  /* Slide off-screen by default. The .is-open class added by
-   * src/core/panel.js animates it back into view. transform is used
-   * (not display:none) so the transition is smooth. */
-  transform: translateX(100%);
-  transition: transform 220ms ease;
-  /* Above the SVG so it visually overlays the map. */
-  z-index: 10;
+  transition: width 220ms ease;
 }
 
-.country-panel.is-open {
-  transform: translateX(0);
+.side-panel.is-open {
+  /* min() lets the panel shrink on narrow viewports so the map
+   * stays usable. flex-basis is matched so flex doesn't recompute
+   * to zero. */
+  width: min(380px, 38vw);
+  flex-basis: min(380px, 38vw);
+}
+
+.side-panel.left-panel {
+  border-right: 1px solid var(--color-panel-border);
+}
+
+.side-panel.left-panel.is-open {
+  /* Left panel is slightly narrower by default — it hosts compact
+   * controls (toggles, filters), not detail text. */
+  width: min(300px, 32vw);
+  flex-basis: min(300px, 32vw);
+}
+
+.side-panel.right-panel {
+  border-left: 1px solid var(--color-panel-border);
+}
+
+/* Bottom panel — selection-gated drawer.
+ *
+ * Three states:
+ *   1. Hidden (default, no selection): height 0. Not even the
+ *      handle shows; no affordance to time-line nothing.
+ *   2. Available (selection active, .is-available): height equal
+ *      to the handle (32px). The handle peeks up from the bottom
+ *      so the user can pull the drawer up when they want.
+ *   3. Open (selection active, .is-open also): height min(280px,
+ *      38vh). Full panel content visible; handle stays at top.
+ *
+ * The user toggles between states 2 and 3 via the handle. The
+ * bootstrap script in index.html drives state 1↔2 from the
+ * selection event channel (state.js).
+ */
+.bottom-panel {
+  flex: 0 0 0;
+  height: 0;
+  overflow: hidden;
+  background: var(--color-panel-bg);
+  border-top: 1px solid var(--color-panel-border);
+  display: flex;
+  flex-direction: column;
+  transition: height 220ms ease;
+}
+
+.bottom-panel.is-available {
+  height: 32px;
+  flex-basis: 32px;
+}
+
+.bottom-panel.is-available.is-open {
+  height: min(280px, 38vh);
+  flex-basis: min(280px, 38vh);
+}
+
+/* The handle: always 32px tall, always at the top of the panel.
+ * In state "available" it's the only visible part of the panel; in
+ * state "open" it sits above the content area.
+ *
+ * cursor:ns-resize hints at the drag affordance — a vertical
+ * double-arrow cursor on hover signals "you can drag this up and
+ * down," which is the actual gesture. Falls back to a click if
+ * the user doesn't drag. */
+.bottom-panel-handle {
+  flex: 0 0 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  background: transparent;
+  color: var(--color-text-dim);
+  border: none;
+  border-bottom: 1px solid var(--color-panel-border);
+  cursor: ns-resize;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  /* user-select:none keeps text selection from happening when the
+   * user drags across the handle. Without this, accidentally
+   * selecting "TIMELINE" while dragging looks broken. */
+  user-select: none;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.bottom-panel-handle:hover {
+  background: var(--color-hover-overlay);
+  color: var(--color-text);
+}
+
+.bottom-panel-arrow {
+  display: inline-block;
+  font-size: 0.65rem;
+  /* Arrow points up when closed, down when open. The transform
+   * transition matches the panel's height transition timing so the
+   * two animations feel like one. */
+  transition: transform 220ms ease;
+}
+
+.bottom-panel.is-open .bottom-panel-arrow {
+  transform: rotate(180deg);
+}
+
+.bottom-panel-content {
+  flex: 1;
+  overflow: auto;
+  padding: 0.85rem 1rem;
+}
+
+/* Stub message inside placeholder cards — slightly muted so the
+ * temporary nature is obvious. Removed when real content lands. */
+.panel-stub {
+  margin: 0;
+  color: var(--color-text-dim);
+  font-style: italic;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+/* Bottom panel content area: timeline content is going to be wider
+ * than tall, so we size for full-width scrollable content. */
+.bottom-panel .panel-content {
+  flex: 1;
+  overflow: auto;
+  padding: 0.85rem 1rem;
 }
 
 .panel-header {
@@ -569,6 +739,69 @@ body {
 }
 
 .stats-source a:hover {
+  text-decoration: underline;
+}
+
+/* ---------- Summary card ----------
+ * Shows the Wikipedia lead-paragraph extract with an optional
+ * thumbnail floated to the right so prose flows around it. The
+ * thumbnail width is capped so even tall portrait images don't
+ * dominate the card. clear:both on the source link ensures the
+ * "Read on Wikipedia" link always sits below both the text and
+ * the thumbnail regardless of which is taller. */
+.summary-thumb {
+  float: right;
+  max-width: 110px;
+  max-height: 130px;
+  margin: 0 0 0.4rem 0.6rem;
+  border-radius: 3px;
+  /* Subtle border so flags or pale-background images stay
+   * visually delineated against the panel surface. */
+  box-shadow: 0 0 0 1px var(--color-panel-border);
+  /* Keep aspect ratio; Wikipedia returns thumbnails at fixed
+   * max-pixel dimensions which may not match our display size. */
+  object-fit: cover;
+}
+
+.summary-desc {
+  color: var(--color-text-dim);
+  font-style: italic;
+  font-size: 0.85rem;
+  margin-bottom: 0.45rem;
+}
+
+.summary-extract {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+/* Wikipedia's extract_html sometimes contains nested <p> tags. We
+ * tighten their spacing so they sit naturally inside the card. */
+.summary-extract p {
+  margin: 0 0 0.55rem;
+}
+.summary-extract p:last-child {
+  margin-bottom: 0;
+}
+
+.summary-source {
+  /* Float-clear so the link reliably sits below both the text and
+   * the floated thumbnail, however tall each may be. */
+  clear: both;
+  margin-top: 0.85rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--color-panel-border);
+  font-size: 0.78rem;
+  text-align: right;
+}
+
+.summary-source a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.summary-source a:hover {
   text-decoration: underline;
 }
 

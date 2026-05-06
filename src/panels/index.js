@@ -18,9 +18,10 @@
 // file. Lower order = higher in the panel.
 
 import statsCard from "./stats.js";
+import summaryCard from "./summary.js";
 import regionMembersCard from "./region-members.js";
 
-const cards = [statsCard, regionMembersCard];
+const cards = [statsCard, summaryCard, regionMembersCard];
 
 // Sort once at module load — cards' order values don't change at
 // runtime, so re-sorting on every selection would be wasted work.

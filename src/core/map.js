@@ -246,16 +246,17 @@ export async function initMap(container) {
     .text((d) => d.name);
 
   // Region labels for zoom-tier-1. Each region's labelAt comes from
-  // regions.json, hand-positioned at the region's visual center for
-  // readability (often offset from the geometric centroid). We
-  // project lon/lat through the current projection at init time;
-  // if the projection ever changes, this would need to re-run.
+  // regions.json, hand-positioned at the region's visual center.
+  // We retain the original [lon, lat] in the bound datum (rather
+  // than just storing the projected x/y) so the resize handler can
+  // re-project on container resize without a separate lookup.
   const regionLabelData = regions
     .map((region) => {
       const projected = projection(region.properties.labelAt);
       if (!projected || !Number.isFinite(projected[0])) return null;
       return {
         name: region.properties.name,
+        coords: region.properties.labelAt,
         x: projected[0],
         y: projected[1],
       };
@@ -371,6 +372,88 @@ export async function initMap(container) {
   // On-screen zoom buttons. We need these because the trackpad-first
   // wheel scheme above leaves mouse-wheel users with no scroll-zoom.
   addZoomControls(container, svg, zoom);
+
+  // Resize handling. When the map container size changes (most
+  // commonly because the user toggled a side or bottom panel), we
+  // refit the projection to the new dimensions and re-render the
+  // geometry. Without this the SVG just letterboxes via
+  // preserveAspectRatio, which works visually but wastes available
+  // space and makes the map awkwardly small when panels are open.
+  //
+  // The user's current zoom transform is preserved across resizes
+  // (we don't reset to identity), so opening a panel doesn't snap
+  // them out of a region they were inspecting.
+  function refit() {
+    const rect = container.getBoundingClientRect();
+    const newW = rect.width;
+    const newH = rect.height;
+    // Skip degenerate sizes — happens briefly when the page is
+    // initializing or hidden behind a 0-width animation frame.
+    if (newW < 10 || newH < 10) return;
+
+    svg.attr("viewBox", `0 0 ${newW} ${newH}`);
+    root
+      .select("rect.map-ocean")
+      .attr("width", newW)
+      .attr("height", newH);
+
+    // Refit projection to new container dimensions, then re-render
+    // every path with the same path generator (it picks up the
+    // updated projection automatically).
+    projection.fitSize([newW, newH], countries);
+    countriesGroup.selectAll("path.country").attr("d", path);
+    regionsGroup.selectAll("path.region").attr("d", path);
+    graticuleGroup
+      .select("path.graticule")
+      .attr("d", path(d3.geoGraticule10()));
+
+    // Country labels: recompute centroid and requiredK in place.
+    // The bound datum is mutated, so the next zoom-handler tick
+    // will see the new requiredK without rebinding.
+    labelsGroup.selectAll("text.country-label").attr("transform", function (d) {
+      const [cx, cy] = path.centroid(d.feature);
+      if (!Number.isFinite(cx)) return null;
+      d.cx = cx;
+      d.cy = cy;
+      const bounds = path.bounds(d.feature);
+      const bboxWidth = Math.max(1, bounds[1][0] - bounds[0][0]);
+      const labelWidth = d.name.length * 0.55 * LABEL_BASE_SIZE;
+      d.requiredK = Math.max(2, Math.min(8, labelWidth / bboxWidth));
+      return `translate(${cx}, ${cy})`;
+    });
+
+    // Region labels: re-project the original [lon, lat] (which we
+    // kept on the datum as `coords`) to new screen coordinates.
+    regionLabelsGroup
+      .selectAll("text.region-label")
+      .attr("transform", function (d) {
+        const projected = projection(d.coords);
+        if (!projected || !Number.isFinite(projected[0])) return null;
+        d.x = projected[0];
+        d.y = projected[1];
+        return `translate(${projected[0]}, ${projected[1]})`;
+      });
+
+    // Update the zoom translateExtent to the new bounds. We then
+    // re-apply the current transform so d3 re-clamps it within the
+    // new extent (pan position may now be out of bounds if the
+    // container shrank). Reapplying the same transform is a no-op
+    // when in-bounds and a clamp when not.
+    zoom.translateExtent([
+      [0, 0],
+      [newW, newH],
+    ]);
+    const current = d3.zoomTransform(svg.node());
+    svg.call(zoom.transform, current);
+  }
+
+  // ResizeObserver fires repeatedly during the panel transition
+  // (220ms). Refitting every frame is cheap enough — d3 update of
+  // ~250 paths is well within budget — so we don't debounce; the
+  // map smoothly tracks the panel animation rather than snapping
+  // at the end.
+  const resizeObserver = new ResizeObserver(() => refit());
+  resizeObserver.observe(container);
 
   // ------------------------------------------------------------------
   // Public handle. Narrow on purpose — see the lego-block rationale
