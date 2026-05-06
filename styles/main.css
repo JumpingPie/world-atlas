@@ -228,6 +228,55 @@ body {
   opacity: 1;
 }
 
+/* ---------- Region polygons (merged country geometries) ----------
+ *
+ * Regions are rendered ABOVE countries so when zoom-tier-1 is active
+ * their fills cover individual country borders, producing the
+ * visually unified "world view" of grouped landmasses. At zoom-
+ * tier-2+ the entire region group is hidden via display:none and
+ * country geometry takes over.
+ *
+ * Same hover/selected/dimmed pattern as countries so visual feedback
+ * is consistent across selection types.
+ */
+.map-regions {
+  display: none;
+}
+.world-map.zoom-tier-1 .map-regions {
+  display: block;
+}
+
+/* When regions are showing (zoom-tier-1) we route clicks to them
+ * rather than to countries. At higher tiers the region group is
+ * display:none so this rule has no effect and country clicks land. */
+.world-map.zoom-tier-1 .country {
+  pointer-events: none;
+}
+
+.region {
+  fill: var(--color-land);
+  stroke: var(--color-land-stroke);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+  cursor: pointer;
+  transition: fill 120ms ease;
+}
+
+.region:hover {
+  fill: var(--color-land-hover);
+}
+
+.region.is-selected {
+  fill: var(--color-accent);
+  stroke: var(--color-selection-stroke);
+  stroke-width: 2px;
+  opacity: 1;
+}
+
+.region.is-dimmed {
+  opacity: 0.55;
+}
+
 /* ---------- Country name labels ----------
  * Labels are SVG <text> nodes inside .map-labels. The parent group's
  * font-size attribute is set by map.js and counter-scaled by the
@@ -521,4 +570,54 @@ body {
 
 .stats-source a:hover {
   text-decoration: underline;
+}
+
+/* ---------- Region members card ----------
+ * Shown when a region (rather than a country) is selected. Two-column
+ * grid of clickable country buttons; clicking one drills into the
+ * country's panel. */
+.region-members-header {
+  margin: 0 0 0.65rem;
+  color: var(--color-text-dim);
+  font-size: 0.83rem;
+}
+
+.region-members-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  /* Two columns on the typical panel width; on very narrow viewports
+   * (when the panel collapses to nearly full width on mobile) the
+   * minmax keeps each button at a usable minimum width. */
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.3rem 0.5rem;
+}
+
+.region-member {
+  margin: 0;
+}
+
+.region-member-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  padding: 0.3rem 0.45rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 100ms ease, border-color 100ms ease;
+}
+
+.region-member-btn:hover {
+  background: var(--color-hover-overlay);
+  border-color: var(--color-panel-border);
+}
+
+.region-member-btn:active {
+  background: var(--color-active-overlay);
 }

@@ -18,18 +18,19 @@ export default {
   order: 999,
 
   /**
-   * Render the card for a given country.
+   * Render the card for a given selection.
    *
-   * @param {object} countryData - Aggregated country data (the object
-   *     produced by merging all data/countries/{code}/*.json files).
-   *     May be missing fields if some fetchers haven't run yet.
+   * @param {{kind: "country", feature: object} |
+   *         {kind: "region",  region:  object} |
+   *         null} selection - Typed selection from the panel.
    * @returns {HTMLElement | null} A DOM node to append to the panel,
-   *     or null to skip this card for this country (e.g. if the data
+   *     or null to skip this card for this selection (e.g. when the
+   *     selection.kind doesn't apply to this card type, or the data
    *     this card needs isn't available).
    */
-  render(countryData) {
-    // Skip if we don't have the data this card needs.
-    if (!countryData?.someExpectedField) return null;
+  render(selection) {
+    // Cards usually filter by selection.kind first.
+    if (selection?.kind !== "country") return null;
 
     const el = document.createElement("section");
     el.className = "panel-card";

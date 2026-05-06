@@ -94,13 +94,20 @@ export default {
   order: 10,
 
   /**
-   * Render the card for a given country.
+   * Render the card for a given selection.
    *
-   * @param {object} country - GeoJSON feature from the world TopoJSON.
-   *     The numeric ISO is at country.id; we pass that to the fetcher.
-   * @returns {HTMLElement}
+   * The card applies only to country selections. For region or null
+   * selections it returns null and the panel skips it — that's how
+   * cards declare their applicability under the typed-selection
+   * contract documented in src/panels/README.md.
+   *
+   * @param {object} selection - { kind, feature } or { kind, region }.
+   * @returns {HTMLElement | null}
    */
-  render(country) {
+  render(selection) {
+    if (selection?.kind !== "country") return null;
+    const country = selection.feature;
+
     const el = document.createElement("section");
     el.className = "panel-card stats-card";
     el.innerHTML = `

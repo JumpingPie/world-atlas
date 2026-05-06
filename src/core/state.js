@@ -18,11 +18,22 @@
 /**
  * The state object. Mutate only via `setState`, which fires events.
  * Read directly via `getState`.
+ *
+ * Selection invariant: at most one of selectedCountry and
+ * selectedRegion is non-null at any given time. Setting one through
+ * setSelection() automatically clears the other; setting them
+ * directly via setState() is allowed but the caller is responsible
+ * for maintaining the invariant. Panels and cards should always read
+ * the unified selection via getCurrentSelection() rather than peeking
+ * at the two fields directly.
  */
 const state = {
-  // ISO 3166-1 alpha-2 code of the country whose panel is open, or null.
-  // Populated in Section 2.
+  // The GeoJSON feature for the country whose panel is open, or null.
   selectedCountry: null,
+
+  // The selected region object (one entry from regions.json plus the
+  // merged geometry produced by map.js), or null.
+  selectedRegion: null,
 
   // Set of currently-active layer IDs. Populated in Section 5+.
   activeLayers: new Set(),
@@ -55,11 +66,20 @@ export function getState() {
  * Each top-level key changed fires an event named after that key. So
  * setState({ selectedCountry: "DE" }) fires a "selectedCountry" event.
  *
+ * Updates ALL fields first, then emits ALL events, so handlers
+ * always see a consistent state snapshot. Without this two-phase
+ * approach, code that updates multiple fields in one call (e.g.
+ * setSelection swapping country↔region) would briefly expose a
+ * mid-update state to the first handler in the loop.
+ *
  * @param {object} patch - Keys to update on the state object.
  */
 export function setState(patch) {
-  for (const key of Object.keys(patch)) {
+  const keys = Object.keys(patch);
+  for (const key of keys) {
     state[key] = patch[key];
+  }
+  for (const key of keys) {
     emit(key, state[key]);
   }
 }
@@ -89,4 +109,50 @@ function emit(event, value) {
       console.error(`[state] handler for "${event}" threw:`, err);
     }
   }
+}
+
+/**
+ * Set the active selection (country or region) while maintaining the
+ * mutual-exclusion invariant. Setting a country clears any selected
+ * region; setting a region clears any selected country; setting null
+ * clears both.
+ *
+ * Centralizing this in one helper keeps every caller from having to
+ * remember to clear the other field — the invariant is mechanical
+ * here rather than enforced by convention everywhere.
+ *
+ * @param {"country" | "region" | null} kind - What's being selected.
+ *     null clears the selection entirely.
+ * @param {*} value - The country feature or region object. Ignored
+ *     when kind is null.
+ */
+export function setSelection(kind, value = null) {
+  if (kind === "country") {
+    setState({ selectedCountry: value, selectedRegion: null });
+  } else if (kind === "region") {
+    setState({ selectedRegion: value, selectedCountry: null });
+  } else {
+    setState({ selectedCountry: null, selectedRegion: null });
+  }
+}
+
+/**
+ * Read the current selection in unified, type-tagged form.
+ *
+ * Panels and cards consume this rather than poking at selectedCountry
+ * or selectedRegion directly, so a card's render logic can dispatch
+ * cleanly on `selection.kind`.
+ *
+ * @returns {{kind: "country", feature: object} |
+ *           {kind: "region", region: object} |
+ *           null}
+ */
+export function getCurrentSelection() {
+  if (state.selectedCountry) {
+    return { kind: "country", feature: state.selectedCountry };
+  }
+  if (state.selectedRegion) {
+    return { kind: "region", region: state.selectedRegion };
+  }
+  return null;
 }

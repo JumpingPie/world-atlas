@@ -1,0 +1,109 @@
+{
+  "_schema": "regions/v1",
+  "_generated": "2026-05-04T00:00:00Z",
+  "_source": "hand-curated",
+  "_notes": [
+    "Geopolitical region groupings used to render region polygons and labels at the world view (zoom-tier-1).",
+    "Country IDs are ISO 3166-1 numeric codes, three-digit zero-padded, matching the world-atlas TopoJSON feature.id format.",
+    "labelAt is [longitude, latitude] in degrees, hand-positioned at each region's visual center for label placement (often offset from geographic centroid for readability — Russia's centroid is in central Siberia, but the label reads better placed further west, etc.).",
+    "Some choices are conventional but defensible rather than universal: Russia is its own region rather than Eastern Europe; Turkey is in MENA rather than Europe; Afghanistan is in South Asia per UN convention; the Caribbean is grouped with Latin America. Adjust by editing this file — no code changes required.",
+    "Antarctica and remote sub-Antarctic territories are not assigned to any region (left out of the regions object); they render as ungrouped countries visible only at high zoom."
+  ],
+  "regions": {
+    "Northern America": {
+      "labelAt": [-100, 50],
+      "iso": ["840", "124", "304", "060", "666"]
+    },
+    "Latin America & the Caribbean": {
+      "labelAt": [-65, -10],
+      "iso": [
+        "484", "084", "320", "222", "340", "558", "188", "591",
+        "170", "862", "328", "740", "254", "076", "218", "604", "068", "152", "032", "600", "858", "238",
+        "192", "332", "214", "388", "044", "780", "052", "028", "212", "308", "659", "662", "670",
+        "630", "850", "092", "136", "796", "660", "533", "531", "534", "652", "663", "535",
+        "312", "474", "500"
+      ]
+    },
+    "Northern Europe": {
+      "labelAt": [12, 62],
+      "iso": [
+        "826", "372", "352", "578", "752", "246", "208", "234", "744",
+        "233", "428", "440", "833", "831", "832", "248"
+      ]
+    },
+    "Western Europe": {
+      "labelAt": [4, 49],
+      "iso": ["250", "276", "528", "056", "442", "756", "040", "438", "492"]
+    },
+    "Eastern Europe": {
+      "labelAt": [27, 50],
+      "iso": ["616", "203", "703", "348", "642", "100", "112", "804", "498"]
+    },
+    "Southern Europe": {
+      "labelAt": [15, 41],
+      "iso": [
+        "724", "620", "380", "300", "196", "470", "336", "674", "020", "292",
+        "705", "191", "070", "688", "499", "807", "008", "412"
+      ]
+    },
+    "Russia & Caucasus": {
+      "labelAt": [85, 60],
+      "iso": ["643", "268", "051", "031"]
+    },
+    "Middle East & North Africa": {
+      "labelAt": [38, 27],
+      "iso": [
+        "504", "012", "788", "434", "818", "729", "732",
+        "792", "422", "760", "376", "275", "400", "368", "364",
+        "682", "887", "512", "784", "634", "048", "414"
+      ]
+    },
+    "West Africa": {
+      "labelAt": [0, 12],
+      "iso": [
+        "478", "466", "562", "566", "686", "270", "624", "324", "694", "430",
+        "384", "288", "854", "768", "204", "132", "654"
+      ]
+    },
+    "Central Africa": {
+      "labelAt": [20, -1],
+      "iso": ["120", "140", "148", "178", "180", "266", "226", "678", "024"]
+    },
+    "East Africa": {
+      "labelAt": [38, -5],
+      "iso": [
+        "728", "231", "232", "262", "706", "404", "800", "646", "108", "834",
+        "508", "450", "174", "175", "480", "690", "638", "454", "894", "716"
+      ]
+    },
+    "Southern Africa": {
+      "labelAt": [25, -25],
+      "iso": ["710", "516", "072", "426", "748"]
+    },
+    "Central Asia": {
+      "labelAt": [62, 44],
+      "iso": ["398", "860", "795", "417", "762"]
+    },
+    "South Asia": {
+      "labelAt": [80, 22],
+      "iso": ["004", "356", "586", "050", "144", "524", "064", "462"]
+    },
+    "East Asia": {
+      "labelAt": [110, 38],
+      "iso": ["156", "496", "408", "410", "392", "158", "344", "446"]
+    },
+    "Southeast Asia": {
+      "labelAt": [110, 5],
+      "iso": ["104", "764", "418", "116", "704", "608", "458", "702", "360", "096", "626"]
+    },
+    "Oceania": {
+      "labelAt": [145, -25],
+      "iso": [
+        "036", "554", "598", "242", "090", "548", "540",
+        "882", "776", "296", "798", "520", "584", "583", "585",
+        "184", "570", "258", "876", "016", "316", "580", "772",
+        "612", "574", "162", "166"
+      ]
+    }
+  }
+}

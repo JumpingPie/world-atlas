@@ -33,7 +33,7 @@
 
 import * as d3 from "d3";
 import * as topojson from "topojson-client";
-import { setState, on } from "./state.js";
+import { setSelection, on } from "./state.js";
 
 /**
  * Path to the world country borders TopoJSON. Loaded from CDN in
@@ -42,6 +42,14 @@ import { setState, on } from "./state.js";
  */
 const COUNTRIES_TOPOJSON_URL =
   "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+
+/**
+ * Path to the regions data file. See data/geo/regions.json for the
+ * authoritative country-to-region mapping. The file is loaded once
+ * at startup; changes to it require a reload but do not require any
+ * code changes.
+ */
+const REGIONS_DATA_URL = "data/geo/regions.json";
 
 /** Base on-screen size of country labels, in pixels. The label group's
  *  font-size is counter-scaled by the inverse of the zoom transform's k
@@ -56,36 +64,10 @@ const EDGE_PAN_THRESHOLD = 30;
  *  the threshold boundary to this value at the edge. */
 const EDGE_PAN_MAX_SPEED = 8;
 
-/** Base on-screen size of continent labels, in pixels. Larger than
- *  country labels because continent labels stand alone and need to
- *  read at a glance from the world view. */
-const REGION_BASE_SIZE = 22;
-
-/**
- * Continent labels for the lowest zoom level.
- *
- * Positions are in [longitude, latitude] and projected to screen
- * coordinates at runtime. These were chosen as visual centers — not
- * geographic centroids — because the visual center of a continent
- * (where the eye expects the label) is often offset from its true
- * centroid (Russia pulls Asia's centroid northward, for example).
- *
- * Antarctica is intentionally omitted: it appears as a thin strip at
- * the bottom of equal-area world maps and a label there competes
- * with the map controls and clutters the view.
- *
- * This is a temporary scaffold. A later section will replace it with
- * computed centroids of merged regional geometries, derived from a
- * proper country-to-region mapping table.
- */
-const CONTINENT_LABELS = [
-  { name: "North America", coords: [-100, 45] },
-  { name: "South America", coords: [-58, -15] },
-  { name: "Europe", coords: [15, 52] },
-  { name: "Africa", coords: [20, 5] },
-  { name: "Asia", coords: [95, 40] },
-  { name: "Oceania", coords: [140, -25] },
-];
+/** Base on-screen size of region labels, in pixels. Larger than
+ *  country labels because region labels stand alone at the world
+ *  view and need to read at a glance. */
+const REGION_BASE_SIZE = 18;
 
 /**
  * Initialize the world map inside `container`. Call this once at app
@@ -132,6 +114,11 @@ export async function initMap(container) {
   const graticuleGroup = root.append("g").attr("class", "map-graticule");
 
   const countriesGroup = root.append("g").attr("class", "map-countries");
+  // Region polygons (merged country geometries grouped by region).
+  // Ordered above countries so when zoom-tier-1 is active the region
+  // fills paint on top, hiding individual country borders. CSS
+  // hides this group at zoom-tier-2+ so countries become visible.
+  const regionsGroup = root.append("g").attr("class", "map-regions");
   const overlaysGroup = root.append("g").attr("class", "map-overlays");
   // Country labels: ordered above overlays so they paint on top.
   const labelsGroup = root
@@ -146,9 +133,22 @@ export async function initMap(container) {
     .attr("class", "map-region-labels")
     .attr("font-size", `${REGION_BASE_SIZE}px`);
 
-  // Fetch and render the country borders.
-  const topology = await fetchCountriesTopology();
+  // Fetch country topology and regions data in parallel — neither
+  // depends on the other and both need to resolve before geometry
+  // can render.
+  const [topology, regionsData] = await Promise.all([
+    fetchCountriesTopology(),
+    fetchRegionsData(),
+  ]);
   const countries = topojson.feature(topology, topology.objects.countries);
+
+  // Build region features by merging the country geometries listed
+  // for each region. Each region gets one merged GeoJSON Feature
+  // with a MultiPolygon geometry covering the union of its members.
+  // We retain the region metadata (label position, country list) on
+  // the feature's properties so click and label code can read it
+  // directly from the d3 datum without extra lookups.
+  const regions = buildRegionFeatures(topology, regionsData);
 
   // Fit the projection to the available space using the actual
   // country geometries — centers and scales the world correctly
@@ -173,10 +173,27 @@ export async function initMap(container) {
     .attr("data-iso-numeric", (d) => d.id)
     .attr("d", path)
     .on("click", (event, feature) => {
-      // The map's only job on click is to publish the selection
-      // through state.js. Whoever cares (the panel) listens there.
+      // The map's only job on click is to publish the selection.
+      // setSelection enforces the country/region mutual exclusion
+      // so we don't have to remember to clear selectedRegion here.
       event.stopPropagation();
-      setState({ selectedCountry: feature });
+      setSelection("country", feature);
+    });
+
+  // Region polygons. One path per region; click selects the whole
+  // region. Visibility is controlled by CSS based on the SVG's
+  // zoom-tier class — at zoom-tier-1 these are visible and clickable;
+  // at zoom-tier-2+ they're hidden and country clicks take over.
+  regionsGroup
+    .selectAll("path.region")
+    .data(regions)
+    .join("path")
+    .attr("class", "region")
+    .attr("data-region-name", (d) => d.properties.name)
+    .attr("d", path)
+    .on("click", (event, region) => {
+      event.stopPropagation();
+      setSelection("region", region);
     });
 
   // Country name labels with per-country zoom thresholds.
@@ -228,16 +245,22 @@ export async function initMap(container) {
     .attr("dy", "0.35em")
     .text((d) => d.name);
 
-  // Continent labels for zoom-tier-1. Project the hardcoded lat/lon
-  // positions through the active projection, then drop any that
-  // didn't project cleanly (shouldn't happen for points on land but
-  // we defensively filter).
-  const regionLabelData = CONTINENT_LABELS.map((c) => {
-    const projected = projection(c.coords);
-    return projected
-      ? { name: c.name, x: projected[0], y: projected[1] }
-      : null;
-  }).filter((d) => d != null && Number.isFinite(d.x));
+  // Region labels for zoom-tier-1. Each region's labelAt comes from
+  // regions.json, hand-positioned at the region's visual center for
+  // readability (often offset from the geometric centroid). We
+  // project lon/lat through the current projection at init time;
+  // if the projection ever changes, this would need to re-run.
+  const regionLabelData = regions
+    .map((region) => {
+      const projected = projection(region.properties.labelAt);
+      if (!projected || !Number.isFinite(projected[0])) return null;
+      return {
+        name: region.properties.name,
+        x: projected[0],
+        y: projected[1],
+      };
+    })
+    .filter((d) => d != null);
 
   regionLabelsGroup
     .selectAll("text.region-label")
@@ -249,19 +272,35 @@ export async function initMap(container) {
     .attr("dy", "0.35em")
     .text((d) => d.name);
 
-  // Clicking the ocean clears the selection. Attached after country
-  // handlers so country clicks (which stopPropagation) win.
+  // Clicking the ocean clears any selection. Attached after country
+  // and region handlers so element clicks (which stopPropagation)
+  // win when present.
   root.select("rect.map-ocean").on("click", () => {
-    setState({ selectedCountry: null });
+    setSelection(null);
   });
 
-  // Reflect selection visually. The map listens to state.js — the
-  // panel doesn't tell it directly. Keeps data flow one-way.
+  // Reflect country selection visually. The map listens to state.js
+  // — the panel doesn't tell it directly. Keeps data flow one-way.
   on("selectedCountry", (country) => {
     countriesGroup
       .selectAll("path.country")
       .classed("is-selected", (d) => country != null && d.id === country.id)
       .classed("is-dimmed", (d) => country != null && d.id !== country.id);
+  });
+
+  // Same treatment for region selection — highlight the selected
+  // region's merged polygon and dim the others.
+  on("selectedRegion", (region) => {
+    regionsGroup
+      .selectAll("path.region")
+      .classed(
+        "is-selected",
+        (d) => region != null && d.properties.name === region.properties.name
+      )
+      .classed(
+        "is-dimmed",
+        (d) => region != null && d.properties.name !== region.properties.name
+      );
   });
 
   // ------------------------------------------------------------------
@@ -532,4 +571,68 @@ async function fetchCountriesTopology() {
     );
   }
   return res.json();
+}
+
+/**
+ * Fetch the regions data file (country-to-region mapping plus label
+ * positions). See data/geo/regions.json for the file's authoritative
+ * contents and notes on choices made.
+ */
+async function fetchRegionsData() {
+  const res = await fetch(REGIONS_DATA_URL);
+  if (!res.ok) {
+    throw new Error(
+      `Failed to load regions data: ${res.status} ${res.statusText}`
+    );
+  }
+  return res.json();
+}
+
+/**
+ * Build region GeoJSON Features by merging country geometries.
+ *
+ * For each region in the data file, finds the matching country
+ * geometries in the topology (by ISO numeric code), merges them with
+ * topojson.merge, and produces a Feature whose properties carry the
+ * region's name, label position, and member country IDs. These
+ * properties survive into the d3 datum so click handlers and label
+ * code can read them directly without separate lookups.
+ *
+ * @param {object} topology - Loaded TopoJSON.
+ * @param {object} regionsData - Parsed contents of regions.json.
+ * @returns {Array<object>} GeoJSON Features, one per region.
+ */
+function buildRegionFeatures(topology, regionsData) {
+  const allGeoms = topology.objects.countries.geometries;
+  const result = [];
+  for (const [name, info] of Object.entries(regionsData.regions)) {
+    // ISO codes in the topology may be numbers, strings, or zero-
+    // padded strings depending on the dataset. Normalize both sides
+    // to three-digit zero-padded strings before comparing.
+    const wanted = new Set(info.iso.map((s) => String(s).padStart(3, "0")));
+    const geoms = allGeoms.filter((g) =>
+      wanted.has(String(g.id).padStart(3, "0"))
+    );
+    if (geoms.length === 0) {
+      // A region with no resolvable members — likely a typo in the
+      // ISO list or a country missing from the 110m TopoJSON. Log
+      // and continue rather than throwing, so the rest of the world
+      // still renders.
+      console.warn(
+        `[map] region "${name}" has no member geometries in the topology`
+      );
+      continue;
+    }
+    const merged = topojson.merge(topology, geoms);
+    result.push({
+      type: "Feature",
+      geometry: merged,
+      properties: {
+        name,
+        labelAt: info.labelAt,
+        countryIds: info.iso,
+      },
+    });
+  }
+  return result;
 }
