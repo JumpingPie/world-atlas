@@ -212,6 +212,7 @@
       import { on, getCurrentSelection } from "./src/core/state.js";
       import { initLayerManager } from "./src/core/layer-manager.js";
       import { initLayerControls } from "./src/core/layer-controls.js";
+      import { initBottomPanel } from "./src/core/bottom-panel.js";
 
       const container = document.getElementById("map-container");
       const panelContainer = document.getElementById("country-panel");
@@ -256,23 +257,13 @@
 
       // Bottom panel — selection-gated drawer with handle.
       //
-      // Lifecycle:
-      //   - .is-available added when a selection exists; removed when
-      //     it clears. Controls whether the handle is visible at all.
-      //   - .is-open toggled by user interaction with the handle.
-      //     Clearing the selection also clears .is-open so the panel
-      //     fully collapses.
-      //
-      // Interaction:
-      //   - Click the handle: toggle open/closed.
-      //   - Drag the handle up/down: panel grows/shrinks live.
-      //     On release, snaps to whichever extreme is closer.
-      //
-      // We distinguish click vs drag by movement threshold: a
-      // mousedown→mouseup with less than 4px of vertical movement is
-      // a click; otherwise it's treated as a drag.
+      // The drawer is intentionally a clean two-state control for
+      // this pass: handle-only when available, open when the user
+      // clicks the handle. We are not pretending it is freely
+      // draggable until we build true resize behavior later.
       const bottomPanel = document.getElementById("bottom-panel");
       const bottomHandle = bottomPanel.querySelector(".bottom-panel-handle");
+      const bottomContent = bottomPanel.querySelector(".bottom-panel-content");
 
       function syncBottomPanelAvailability() {
         const hasSelection = !!getCurrentSelection();
@@ -282,65 +273,12 @@
       on("selectedCountry", syncBottomPanelAvailability);
       on("selectedRegion", syncBottomPanelAvailability);
 
-      const HANDLE_HEIGHT = 32;
-      const OPEN_HEIGHT_PX = Math.min(280, window.innerHeight * 0.38);
-      const DRAG_THRESHOLD = 4;
-
-      let dragStartY = 0;
-      let dragStartHeight = 0;
-      let isDragging = false;
-
-      function onDragMove(event) {
-        const dy = dragStartY - event.clientY;
-        if (!isDragging && Math.abs(dy) > DRAG_THRESHOLD) {
-          isDragging = true;
-          // Disable the height transition while dragging — otherwise
-          // each pixel of mouse movement would animate over 220ms,
-          // making the drag feel laggy and rubber-banded.
-          bottomPanel.style.transition = "none";
-        }
-        if (!isDragging) return;
-        const maxHeight = Math.min(window.innerHeight * 0.6, 600);
-        const newHeight = Math.max(
-          HANDLE_HEIGHT,
-          Math.min(maxHeight, dragStartHeight + dy)
-        );
-        bottomPanel.style.height = `${newHeight}px`;
-        bottomPanel.style.flexBasis = `${newHeight}px`;
-      }
-
-      function onDragEnd() {
-        document.removeEventListener("mousemove", onDragMove);
-        document.removeEventListener("mouseup", onDragEnd);
-
-        const finalHeight = bottomPanel.offsetHeight;
-        // Reset inline overrides so CSS takes back control. The
-        // transition style is cleared too so the next class change
-        // animates normally.
-        bottomPanel.style.height = "";
-        bottomPanel.style.flexBasis = "";
-        bottomPanel.style.transition = "";
-
-        if (isDragging) {
-          // Snap to whichever endpoint is closer. The midpoint
-          // between handle-only and fully-open is the threshold.
-          const midpoint = (HANDLE_HEIGHT + OPEN_HEIGHT_PX) / 2;
-          bottomPanel.classList.toggle("is-open", finalHeight > midpoint);
-        } else {
-          // No drag — treat as a click and toggle.
-          bottomPanel.classList.toggle("is-open");
-        }
-        isDragging = false;
-      }
-
-      bottomHandle.addEventListener("mousedown", (event) => {
-        event.preventDefault();
-        dragStartY = event.clientY;
-        dragStartHeight = bottomPanel.offsetHeight;
-        isDragging = false;
-        document.addEventListener("mousemove", onDragMove);
-        document.addEventListener("mouseup", onDragEnd);
+      bottomHandle.addEventListener("click", () => {
+        if (!bottomPanel.classList.contains("is-available")) return;
+        bottomPanel.classList.toggle("is-open");
       });
+
+      initBottomPanel(bottomContent);
 
       // Panel can be initialized synchronously; it just listens for
       // state changes. The map initializes async because it has to
