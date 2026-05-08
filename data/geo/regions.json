@@ -5,18 +5,18 @@
   "_notes": [
     "Geopolitical region groupings used to render region polygons and labels at the world view (zoom-tier-1).",
     "Country IDs are ISO 3166-1 numeric codes, three-digit zero-padded, matching the world-atlas TopoJSON feature.id format.",
-    "Region keys are short labels (W Africa, E Africa, MENA, etc.) — used both as the visible map label AND as the panel title when a region is selected. Compass-prefixed shortenings (W/E/N/S/C/SE) are deliberate so labels for adjacent regions don't collide visually at the world view.",
+    "Region keys are short labels (W. Africa, E. Africa, MENA, etc.) — used both as the visible map label AND as the panel title when a region is selected. Compass-prefixed shortenings (W/E/N/S/C/SE) are deliberate so labels for adjacent regions don't collide visually at the world view.",
     "labelAt is [longitude, latitude] in degrees, hand-positioned at each region's visual center for label placement (often offset from geographic centroid for readability — Russia's centroid is in central Siberia, but the label reads better placed further west, etc.).",
     "Some choices are conventional but defensible rather than universal: Russia is its own region rather than Eastern Europe; Turkey is in MENA rather than Europe; Afghanistan is in South Asia per UN convention; the Caribbean is grouped with Latin America. Adjust by editing this file — no code changes required.",
     "Antarctica and remote sub-Antarctic territories are not assigned to any region (left out of the regions object); they render as ungrouped countries visible only at high zoom."
   ],
   "regions": {
-    "N America": {
-      "labelAt": [-100, 50],
+    "North America": {
+      "labelAt": [-98, 45],
       "iso": ["840", "124", "304", "060", "666"]
     },
     "Latin America": {
-      "labelAt": [-65, -10],
+      "labelAt": [-57, -10],
       "iso": [
         "484", "084", "320", "222", "340", "558", "188", "591",
         "170", "862", "328", "740", "254", "076", "218", "604", "068", "152", "032", "600", "858", "238",
@@ -25,22 +25,22 @@
         "312", "474", "500"
       ]
     },
-    "N Europe": {
+    "N. EU": {
       "labelAt": [12, 62],
       "iso": [
         "826", "372", "352", "578", "752", "246", "208", "234", "744",
         "233", "428", "440", "833", "831", "832", "248"
       ]
     },
-    "W Europe": {
-      "labelAt": [4, 49],
+    "W. EU": {
+      "labelAt": [2, 49],
       "iso": ["250", "276", "528", "056", "442", "756", "040", "438", "492"]
     },
-    "E Europe": {
+    "E. EU": {
       "labelAt": [27, 50],
       "iso": ["616", "203", "703", "348", "642", "100", "112", "804", "498"]
     },
-    "S Europe": {
+    "S. EU": {
       "labelAt": [15, 41],
       "iso": [
         "724", "620", "380", "300", "196", "470", "336", "674", "020", "292",
@@ -52,48 +52,48 @@
       "iso": ["643", "268", "051", "031"]
     },
     "MENA": {
-      "labelAt": [38, 27],
+      "labelAt": [38, 23],
       "iso": [
         "504", "012", "788", "434", "818", "729", "732",
         "792", "422", "760", "376", "275", "400", "368", "364",
         "682", "887", "512", "784", "634", "048", "414"
       ]
     },
-    "W Africa": {
+    "W. Africa": {
       "labelAt": [0, 12],
       "iso": [
         "478", "466", "562", "566", "686", "270", "624", "324", "694", "430",
         "384", "288", "854", "768", "204", "132", "654"
       ]
     },
-    "C Africa": {
+    "C. Africa": {
       "labelAt": [20, -1],
       "iso": ["120", "140", "148", "178", "180", "266", "226", "678", "024"]
     },
-    "E Africa": {
+    "E. Africa": {
       "labelAt": [38, -5],
       "iso": [
         "728", "231", "232", "262", "706", "404", "800", "646", "108", "834",
         "508", "450", "174", "175", "480", "690", "638", "454", "894", "716"
       ]
     },
-    "S Africa": {
+    "S. Africa": {
       "labelAt": [25, -25],
       "iso": ["710", "516", "072", "426", "748"]
     },
-    "C Asia": {
+    "C. Asia": {
       "labelAt": [62, 44],
       "iso": ["398", "860", "795", "417", "762"]
     },
-    "S Asia": {
+    "S. Asia": {
       "labelAt": [80, 22],
       "iso": ["004", "356", "586", "050", "144", "524", "064", "462"]
     },
-    "E Asia": {
-      "labelAt": [115, 36],
+    "E. Asia": {
+      "labelAt": [100, 36],
       "iso": ["156", "496", "408", "410", "392", "158", "344", "446"]
     },
-    "SE Asia": {
+    "SE. Asia": {
       "labelAt": [110, 5],
       "iso": ["104", "764", "418", "116", "704", "608", "458", "702", "360", "096", "626"]
     },
