@@ -212,7 +212,6 @@
       import { on, getCurrentSelection } from "./src/core/state.js";
       import { initLayerManager } from "./src/core/layer-manager.js";
       import { initLayerControls } from "./src/core/layer-controls.js";
-      import { initBottomPanel } from "./src/core/bottom-panel.js";
 
       const container = document.getElementById("map-container");
       const panelContainer = document.getElementById("country-panel");
@@ -278,7 +277,22 @@
         bottomPanel.classList.toggle("is-open");
       });
 
-      initBottomPanel(bottomContent);
+      // Timeline content is loaded dynamically so a timeline-module problem
+      // cannot prevent the base map from initializing. If the timeline code
+      // fails, the map still works and the drawer keeps its placeholder.
+      import("./src/core/bottom-panel.js")
+        .then(({ initBottomPanel }) => {
+          initBottomPanel(bottomContent);
+        })
+        .catch((err) => {
+          console.error("[atlas] bottom panel init failed:", err);
+          bottomContent.replaceChildren();
+          const fallback = document.createElement("p");
+          fallback.className = "panel-stub";
+          fallback.textContent =
+            "Timeline failed to initialize. The base map is still available; check the console for details.";
+          bottomContent.appendChild(fallback);
+        });
 
       // Panel can be initialized synchronously; it just listens for
       // state changes. The map initializes async because it has to
