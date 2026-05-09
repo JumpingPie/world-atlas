@@ -24,21 +24,41 @@
 //   - Body parsing. Callers do their own .json() / .text().
 
 /**
- * Default retry budget. Three retries plus the original attempt =
- * up to four total. Rate limits typically clear within a few
+ * Default retry budget. Two retries plus the original attempt =
+ * up to three total. Rate limits typically clear within a few
  * seconds of backoff; if they don't, surfacing the error to the
  * user is more honest than retrying forever.
+ *
+ * Combined with the timeout below, worst-case wait is bounded at
+ * roughly (DEFAULT_TIMEOUT + max backoff) × (1 + maxRetries) — for
+ * the defaults that's about 50 seconds before the caller sees an
+ * error. Long enough to handle real transient issues, short enough
+ * not to read as "loading forever."
  */
-const DEFAULT_MAX_RETRIES = 3;
+const DEFAULT_MAX_RETRIES = 2;
+
+/**
+ * Per-attempt timeout. Each fetch is wrapped in an AbortController
+ * that fires after this many milliseconds. Without this, a slow or
+ * stuck server keeps the request open indefinitely — we'd retry
+ * after 30+ second waits even though the server clearly wasn't
+ * coming back, multiplying the user-perceived latency by the retry
+ * budget.
+ *
+ * 15 seconds is generous enough for slow SPARQL queries but tight
+ * enough that "the server is genuinely broken" doesn't translate
+ * to a multi-minute spinner.
+ */
+const DEFAULT_TIMEOUT_MS = 15_000;
 
 /**
  * Base delay between retries, in milliseconds. Each retry waits
- * 2^attempt * BASE_DELAY plus a jitter, so attempt 0 waits ~800ms,
- * attempt 1 ~1600ms, attempt 2 ~3200ms, etc. The jitter avoids
- * thundering-herd retries from multiple in-flight fetchers all
- * hitting their backoff at the same instant.
+ * 2^attempt * BASE_DELAY plus a jitter, so attempt 0 waits ~600ms,
+ * attempt 1 ~1200ms. Shorter than before because we now have a
+ * tight per-attempt timeout — the budget for delay-between-retries
+ * matters less when each attempt itself is bounded.
  */
-const BASE_DELAY_MS = 800;
+const BASE_DELAY_MS = 600;
 
 /**
  * Maximum jitter added to each backoff window. Random in [0, max).
