@@ -13,12 +13,52 @@ leaving your machine.
 
 ## Project status
 
-**Section 1 — project skeleton + base map.** The architecture is in place
-and a zoomable world map renders. Country interactions, layers, timelines,
-and data fetching are forthcoming sections.
+**Sections 1 through 8 are complete.** Working features:
 
-See `docs/ARCHITECTURE.md` for the design rules and `docs/CONVENTIONS.md`
-for code style.
+- Zoomable, pannable Equal Earth world map with trackpad pinch/swipe,
+  on-screen +/- buttons, and pan-bounds enforcement.
+- Country selection with right-side panel showing a stats card
+  (Wikidata) and a tabbed summary card (Wikipedia lead + history
+  section).
+- 17 geopolitical regions selectable at world view via merged
+  geometries, with a region-members card listing constituent
+  countries that drill into individual country panels.
+- Three-panel layout: left (layers), right (selection), bottom
+  (timeline drawer). Bottom drawer is selection-gated, slides over
+  the map without resizing it.
+- Layer system with NATO, EU, BRICS membership overlays toggleable
+  from the left panel. Membership-style layer authoring is one
+  data file plus one ~5-line module file.
+- Vertical curved-baseline timeline in the bottom drawer per-country,
+  parsed from "History of [Country]" Wikipedia articles. Click or
+  arrow-key navigation through eras; description in a split-card
+  layout on the right.
+- Theme system with a dark default and a light "Atlas" theme;
+  theme persistence via localStorage.
+- Robust HTTP layer: in-flight request deduplication, exponential
+  backoff retry on 429/503, per-attempt 15-second timeout to
+  prevent forever-spinners.
+
+See `docs/ARCHITECTURE.md` for design rules, `docs/CONVENTIONS.md`
+for code style, and `docs/IDEAS.md` for the deferred features
+backlog (news bar, IGOs as entities, bilateral relations,
+multi-mode atlas tabs, more themes, etc.).
+
+**Suggested next sessions** (from IDEAS.md and prior discussion):
+
+- **IGOs as first-class entities** with sigils on the map and a
+  dedicated panel — discussed and designed but not yet built.
+- **Bilateral relations card** — defense pacts, sanctions, top trade
+  partners highlighted on click. Data sources: hand-curated for
+  pacts, OFAC/EU lists for sanctions, UN Comtrade for trade.
+- **ACLED-driven conflict layer** — automated war-map updates with
+  red exclamation markers for active conflicts.
+- **Region-stats card** to give region selections more substance
+  beyond the member list.
+
+The atlas is ready for everyday use as a research tool. The
+architecture is lego-blocks throughout: panels, fetchers, layers,
+and themes are all add-by-dropping-a-file with documented contracts.
 
 ## Running locally
 

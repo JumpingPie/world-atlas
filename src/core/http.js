@@ -74,36 +74,61 @@ const MAX_JITTER_MS = 400;
 const RETRY_STATUSES = new Set([429, 503]);
 
 /**
- * Fetch with automatic retry on transient errors.
+ * Fetch with automatic retry on transient errors and a per-attempt
+ * timeout.
  *
  * Successful responses (any status outside RETRY_STATUSES, even
  * 4xx) are returned immediately so the caller can do its own
  * status-based handling (e.g. treating 404 as "no such article").
  *
+ * Each attempt is wrapped in an AbortController set to fire after
+ * `timeoutMs`. A timed-out attempt counts as a network failure and
+ * is retried within the budget. After all retries, an AbortError
+ * propagates to the caller — same as any other fetch failure.
+ *
  * @param {string | URL} url
  * @param {RequestInit} [init]
  * @param {object} [options]
  * @param {number} [options.maxRetries] - Override DEFAULT_MAX_RETRIES.
+ * @param {number} [options.timeoutMs] - Override DEFAULT_TIMEOUT_MS.
  * @returns {Promise<Response>} The Response from the first
  *     successful (or non-retriable) attempt.
  */
 export async function fetchWithRetry(url, init, options = {}) {
   const maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   let attempt = 0;
 
   while (true) {
     let response;
+    // Per-attempt AbortController. We can't share one across
+    // attempts because once a controller is aborted it stays
+    // aborted — we'd need a fresh signal for each retry.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
     try {
-      response = await fetch(url, init);
+      // Compose with any caller-provided signal: we honor cancellation
+      // from above as well as our own timeout. If init.signal is
+      // already aborted, fetch will reject immediately, which we treat
+      // as a non-retriable error (the caller doesn't want this anymore).
+      const initWithSignal = { ...init, signal: controller.signal };
+      response = await fetch(url, initWithSignal);
     } catch (err) {
-      // Network errors (DNS, offline, CORS rejection) — retry the
-      // first couple of times, since transient connectivity blips
-      // shouldn't fail loudly. After max retries, surface the error.
+      clearTimeout(timeoutId);
+      // AbortError from our own timeout: treat as a transient
+      // network failure — retry. AbortError from a caller's signal:
+      // the caller cancelled, surface immediately.
+      const isOurTimeout =
+        err.name === "AbortError" && controller.signal.aborted;
+      if (!isOurTimeout && err.name === "AbortError") throw err;
+
       if (attempt >= maxRetries) throw err;
       await wait(backoffMs(attempt));
       attempt++;
       continue;
     }
+    clearTimeout(timeoutId);
 
     if (!RETRY_STATUSES.has(response.status)) {
       return response;
