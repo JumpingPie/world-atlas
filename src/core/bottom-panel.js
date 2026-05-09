@@ -2,9 +2,8 @@
 //
 // Manages the content of the bottom drawer based on the current
 // selection. The drawer's open/closed state is handled in
-// index.html's bootstrap (handle clicks, drag-to-expand, auto-
-// collapse on selection clear) — this module is concerned only
-// with what's rendered *inside* the content area.
+// index.html's bootstrap; this module is concerned only with what's
+// rendered *inside* the content area.
 //
 // For country selections: fetches the timeline (Wikipedia "History
 // of [Country]" article parsed into eras), renders the timeline
@@ -17,11 +16,6 @@
 // would require their own data design (a region's "history"
 // composes member states' histories and shared regional events)
 // and isn't a V1 feature.
-//
-// For null selections: the panel is collapsed entirely by the
-// bootstrap script via .is-available, so this module's content
-// doesn't render. We still clear the container so a stale timeline
-// isn't visible if the panel is reopened later via class toggling.
 
 import { on, getCurrentSelection } from "./state.js";
 import { fetchCountryStats } from "../fetchers/wikidata-stats.js";
@@ -37,38 +31,33 @@ import { createTimeline } from "./timeline.js";
  *     selection change.
  */
 export function initBottomPanel(container) {
-  // We schedule renders through rAF so the two events fired by
-  // setSelection (one for selectedCountry, one for selectedRegion)
-  // collapse into a single update — same pattern panel.js uses for
-  // the right panel.
   let pending = false;
+  let renderToken = 0;
+
   function schedule() {
     if (pending) return;
     pending = true;
     requestAnimationFrame(() => {
       pending = false;
-      render(container);
+      renderToken += 1;
+      render(container, renderToken, () => renderToken);
     });
   }
 
   on("selectedCountry", schedule);
   on("selectedRegion", schedule);
 
-  // Initial render — covers the case where state already has a
-  // selection at init time (unlikely today, but cheap).
-  render(container);
+  renderToken += 1;
+  render(container, renderToken, () => renderToken);
 }
 
 /**
  * Render the appropriate content for the current selection.
  *
- * Each branch sets the container's children synchronously (showing
- * a loading state if data needs fetching) and may update them
- * asynchronously when fetches resolve. We use isConnected on the
- * container's children to detect "user moved on while fetch was in
- * flight" and silently drop stale results.
+ * The token function prevents stale Wikipedia requests from replacing
+ * the content after the user has already clicked another country.
  */
-function render(container) {
+function render(container, token, getToken) {
   const selection = getCurrentSelection();
 
   if (!selection) {
@@ -85,17 +74,13 @@ function render(container) {
     return;
   }
 
-  // Country selection — fetch and render timeline.
   const country = selection.feature;
   const loading = makeLoading("Loading timeline from Wikipedia…");
   container.replaceChildren(loading);
 
   fetchCountryStats(country.id)
     .then((stats) => {
-      // If the user moved to a different selection while we were
-      // fetching, abort silently. The next render() call will have
-      // already replaced our placeholder.
-      if (!loading.isConnected) return null;
+      if (token !== getToken()) return null;
 
       if (!stats?.wikipediaTitle) {
         container.replaceChildren(
@@ -105,46 +90,30 @@ function render(container) {
         );
         return null;
       }
+
       return fetchTimeline(stats.wikipediaTitle);
     })
     .then((eras) => {
-      if (!loading.isConnected && !container.contains(loading)) {
-        // Even if loading element was already replaced, if we still
-        // have a country selection and our fetched data is for it,
-        // we should show the result. But the simpler check is:
-        // proceed only if the user hasn't moved on. We approximate
-        // that with isConnected on the loading element above.
-        return;
-      }
+      if (token !== getToken()) return;
+
       if (eras == null) {
-        // Either no Wikipedia title (handled above with explicit
-        // empty state) or the timeline fetcher returned null because
-        // there's no "History of X" article. Show a different
-        // empty state for the latter.
-        if (loading.isConnected) {
-          container.replaceChildren(
-            makeEmpty(
-              "No detailed history article found on Wikipedia for this country."
-            )
-          );
-        }
+        container.replaceChildren(
+          makeEmpty("No detailed history article found on Wikipedia for this country.")
+        );
         return;
       }
+
       container.replaceChildren(createTimeline(eras));
     })
     .catch((err) => {
       console.error("[bottom-panel] timeline fetch failed:", err);
-      if (loading.isConnected) {
+      if (token === getToken()) {
         container.replaceChildren(
           makeError(`Failed to load timeline: ${err.message}`)
         );
       }
     });
 }
-
-/* Tiny DOM-builder helpers. Kept inline because each is a single
- * <div> with a class and some text — extracting them would just
- * mean three more imports for almost no shared logic. */
 
 function makeStub(text) {
   const el = document.createElement("p");
