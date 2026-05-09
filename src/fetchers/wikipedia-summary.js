@@ -23,6 +23,7 @@
 // code) can use the same uniform contract as every other fetcher.
 
 import { getOrFetch } from "../core/data-cache.js";
+import { fetchWithRetry } from "../core/http.js";
 import { fetchCountryStats } from "./wikidata-stats.js";
 
 const REST_API = "https://en.wikipedia.org/api/rest_v1/page/summary";
@@ -54,7 +55,7 @@ export async function fetchWikipediaSummary(title) {
   const key = `wikipedia-summary:${title}`;
   return getOrFetch(key, TTL_MS, async () => {
     const url = `${REST_API}/${encodeURIComponent(title)}`;
-    const res = await fetch(url, {
+    const res = await fetchWithRetry(url, {
       headers: {
         Accept: "application/json",
         "Api-User-Agent": USER_AGENT,

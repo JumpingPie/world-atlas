@@ -26,6 +26,7 @@
 // a "no timeline available" empty state.
 
 import { getOrFetch } from "../core/data-cache.js";
+import { fetchWithRetry } from "../core/http.js";
 
 const REST_HTML = "https://en.wikipedia.org/api/rest_v1/page/html";
 
@@ -75,7 +76,7 @@ async function fetchArticleHtml(title) {
   // spaces alone, so we replace spaces explicitly first.
   const slug = encodeURIComponent(title.replace(/ /g, "_"));
   const url = `${REST_HTML}/${slug}`;
-  const res = await fetch(url, {
+  const res = await fetchWithRetry(url, {
     headers: {
       Accept: "text/html",
       "Api-User-Agent": USER_AGENT,

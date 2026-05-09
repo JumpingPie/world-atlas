@@ -586,12 +586,6 @@ body {
   transform: rotate(180deg);
 }
 
-.bottom-panel-content {
-  flex: 1;
-  overflow: auto;
-  padding: 0.85rem 1rem;
-}
-
 /* Stub message inside placeholder cards — slightly muted so the
  * temporary nature is obvious. Removed when real content lands. */
 .panel-stub {
@@ -602,13 +596,24 @@ body {
   line-height: 1.5;
 }
 
-/* Bottom panel content area: timeline content is going to be wider
- * than tall, so we size for full-width scrollable content. */
+/* Bottom panel content area. The timeline manages its own internal
+ * scrolling and padding via .timeline-root and its children, so we
+ * leave this container padding-free and let it overflow:hidden.
+ * Stub/empty/loading messages get their own padding via the rules
+ * below so they don't appear flush against the panel edges. */
 .bottom-panel .panel-content,
 .bottom-panel .bottom-panel-content {
   flex: 1;
-  overflow: auto;
-  padding: 0.85rem 1rem;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.bottom-panel-content > .panel-stub,
+.bottom-panel-content > .card-loading,
+.bottom-panel-content > .card-empty,
+.bottom-panel-content > .card-error {
+  padding: 0.95rem 1.1rem;
 }
 
 /* (Timeline visualization styles consolidated below — see
@@ -1108,149 +1113,248 @@ body {
   font-style: normal;
 }
 
+/* ---------- Timeline visualization ----------
+ *
+ * Two-column split inside the bottom drawer:
+ *   - Left rail (~38% width): vertical list of era markers with up/
+ *     down arrow buttons. Active era centered via scrollIntoView,
+ *     neighbors fade with distance so only ~3-5 are clearly visible.
+ *   - Right card (~62% width): the active era's title and
+ *     Wikipedia-sourced description. Larger, readable type. Fills
+ *     the rest of the panel and scrolls when content is long.
+ *
+ * Vertical orientation chosen because era titles are textual and
+ * variably long ("Holy Roman Empire", "Cold War period"), and
+ * stacking them horizontally caused labels to overlap. One row per
+ * era is unconditionally legible.
+ */
 .timeline-root {
   display: grid;
-  grid-template-columns: minmax(360px, 1fr) minmax(280px, 0.78fr);
-  gap: 0.9rem;
-  align-items: stretch;
-  min-height: 100%;
-}
-
-.timeline-svg {
-  width: 100%;
+  grid-template-columns: minmax(180px, 38%) 1fr;
+  gap: 0;
   height: 100%;
-  min-height: 112px;
-  align-self: center;
-  overflow: visible;
+  /* min-height:0 lets the grid children's overflow:auto actually
+   * scroll instead of growing past the drawer. */
+  min-height: 0;
 }
 
-.timeline-baseline {
-  stroke: color-mix(in srgb, var(--color-text-dim) 62%, transparent);
-  stroke-width: 1.4px;
-  stroke-linecap: round;
-  stroke-dasharray: 4 7;
-  vector-effect: non-scaling-stroke;
+/* The left rail: prev arrow on top, era list in the middle, next
+ * arrow on bottom. */
+.timeline-rail {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--color-panel-border);
+  background: var(--color-card-bg);
+  /* User-select:none avoids picking up text selections when the
+   * user clicks markers in quick succession. */
+  user-select: none;
+}
+
+/* The arrow buttons at top and bottom of the rail. They mirror each
+ * other visually so the rail reads as symmetric. */
+.timeline-nav {
+  flex: 0 0 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--color-text-dim);
+  border: none;
+  cursor: pointer;
+  font-size: 0.7rem;
+  line-height: 1;
+  font-family: var(--font-sans);
+  transition: background 100ms ease, color 100ms ease;
+}
+
+.timeline-nav:hover:not(:disabled) {
+  background: var(--color-hover-overlay);
+  color: var(--color-text);
+}
+
+.timeline-nav:disabled {
+  /* At the first or last era, the corresponding direction is
+   * disabled. We keep them visible (rather than hiding) so the
+   * rail's vertical layout doesn't shift. */
+  opacity: 0.3;
+  cursor: default;
+}
+
+.timeline-prev {
+  border-bottom: 1px solid var(--color-panel-border);
+}
+
+.timeline-next {
+  border-top: 1px solid var(--color-panel-border);
+}
+
+/* Wrapper around the era list; this is the scroll container that
+ * activeMarker.scrollIntoView centers within. overflow:hidden
+ * means scrollbars don't show, but scrollIntoView still works. */
+.timeline-era-list-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  /* A bit of vertical padding so the first and last markers can
+   * scroll-center without bumping the wrapper's edges. */
+  padding: 1rem 0;
+  position: relative;
+}
+
+.timeline-era-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .timeline-marker {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.35rem 0.7rem 0.35rem 0.85rem;
   cursor: pointer;
-  transition: opacity 180ms ease;
+  /* Opacity is set inline by JS based on distance from active.
+   * We transition it for smooth focus shifts. */
+  transition: opacity 200ms ease, background 100ms ease;
+}
+
+.timeline-marker:hover {
+  background: var(--color-hover-overlay);
 }
 
 .timeline-marker-dot {
-  fill: var(--color-panel-bg);
-  stroke: var(--color-accent);
-  stroke-width: 2px;
-  transition: r 180ms ease, fill 180ms ease, stroke-width 180ms ease;
-  vector-effect: non-scaling-stroke;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-text-dim);
+  flex-shrink: 0;
+  transition: width 180ms ease, height 180ms ease, background 180ms ease;
+}
+
+.timeline-marker.is-active .timeline-marker-dot {
+  width: 12px;
+  height: 12px;
+  background: var(--color-accent);
 }
 
 .timeline-marker-label {
-  fill: var(--color-text-dim);
-  font-family: var(--font-sans);
-  font-size: 18px;
-  letter-spacing: 0.02em;
-  pointer-events: none;
-  dominant-baseline: hanging;
-}
-
-.timeline-marker:hover .timeline-marker-dot,
-.timeline-marker.is-active .timeline-marker-dot {
-  fill: var(--color-accent);
-  stroke-width: 2.4px;
+  font-size: 0.85rem;
+  color: var(--color-text-dim);
+  /* Long era titles wrap rather than overflow horizontally. */
+  word-break: break-word;
+  transition: color 180ms ease;
 }
 
 .timeline-marker.is-active .timeline-marker-label {
-  fill: var(--color-text);
+  color: var(--color-text);
   font-weight: 600;
 }
 
+/* The right-side era card. Reuses .summary-section styling from
+ * the summary card so Wikipedia HTML cleanup (citation suppression,
+ * link colors, paragraph spacing) is consistent. */
 .timeline-era-card {
   min-width: 0;
-  max-height: 100%;
-  overflow: auto;
-  border: 1px solid var(--color-panel-border);
-  border-radius: 6px;
-  background: var(--color-card-bg);
-  padding: 0.75rem 0.85rem;
+  overflow-y: auto;
+  padding: 1rem 1.2rem;
 }
 
 .timeline-era-title {
-  margin: 0 0 0.45rem;
+  margin: 0 0 0.6rem;
   color: var(--color-text);
-  font-size: 0.98rem;
+  font-size: 1.05rem;
   font-weight: 650;
   line-height: 1.25;
 }
 
 .timeline-era-body {
-  color: var(--color-text-dim);
-  font-size: 0.84rem;
-  line-height: 1.48;
+  font-size: 0.92rem;
+  line-height: 1.55;
 }
 
 .timeline-era-body p {
-  margin: 0 0 0.55rem;
+  margin: 0 0 0.7rem;
 }
-
 .timeline-era-body p:last-child {
   margin-bottom: 0;
 }
 
 .timeline-era-body h3,
-.timeline-era-body h4,
-.timeline-era-body figure,
-.timeline-era-body table,
+.timeline-era-body h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0.95rem 0 0.4rem;
+  color: var(--color-text);
+}
+
+/* Hide Wikipedia HTML noise — same set the summary card history
+ * tab suppresses via its .summary-section rule, restated here so
+ * timeline cards work even if .summary-section isn't applied. */
 .timeline-era-body .mw-editsection,
+.timeline-era-body sup.reference,
 .timeline-era-body .reference,
 .timeline-era-body .noprint,
 .timeline-era-body .hatnote,
-.timeline-era-body .thumb,
-.timeline-era-body .sidebar,
-.timeline-era-body .infobox,
 .timeline-era-body .toc,
 .timeline-era-body style,
 .timeline-era-body link {
   display: none !important;
 }
 
-.timeline-era-body a,
+.timeline-era-body a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+.timeline-era-body a:hover {
+  text-decoration: underline;
+}
+
+.timeline-era-body img {
+  max-width: 100%;
+  height: auto;
+}
+
+.timeline-era-body figure,
+.timeline-era-body .thumb {
+  max-width: 100%;
+  margin: 0.5rem 0;
+}
+
+.timeline-era-source {
+  margin-top: 0.85rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--color-panel-border);
+  font-size: 0.8rem;
+  text-align: right;
+}
+
 .timeline-era-source a {
   color: var(--color-accent);
   text-decoration: none;
 }
-
-.timeline-era-body a:hover,
 .timeline-era-source a:hover {
   text-decoration: underline;
 }
 
-.timeline-era-source {
-  margin-top: 0.65rem;
-  padding-top: 0.55rem;
-  border-top: 1px solid var(--color-panel-border);
-  font-size: 0.78rem;
-  text-align: right;
-}
-
+/* Theme-specific tweaks for the atlas (light) theme. */
 .theme-atlas .bottom-panel {
-  box-shadow: 0 -2px 8px rgba(60, 40, 15, 0.12);
+  box-shadow: 0 -2px 8px rgba(60, 40, 15, 0.18);
 }
 
-.theme-atlas .timeline-baseline {
-  stroke: rgba(90, 67, 43, 0.55);
-}
-
-.theme-atlas .timeline-era-card {
-  box-shadow: inset 0 0 18px rgba(90, 67, 43, 0.045);
-}
-
-@media (max-width: 900px) {
+/* Mobile / very-narrow layout: stack the rail above the card so
+ * the column structure doesn't squeeze either side too thin. The
+ * rail becomes a horizontal-ish strip on phones; full vertical
+ * scroll is preserved. */
+@media (max-width: 720px) {
   .timeline-root {
     grid-template-columns: 1fr;
+    grid-template-rows: minmax(140px, 0.4fr) 1fr;
   }
-
-  .timeline-svg {
-    height: 112px;
+  .timeline-rail {
+    border-right: none;
+    border-bottom: 1px solid var(--color-panel-border);
   }
 }

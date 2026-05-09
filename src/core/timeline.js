@@ -30,8 +30,6 @@
 //     dispatches a "timeline-step" event on the bottom panel; we
 //     listen for it here.
 
-const VISIBLE_NEIGHBORS = 2;
-
 /**
  * Build a timeline DOM element from an array of era objects.
  *
@@ -175,14 +173,14 @@ function updateRail(rail, activeIndex) {
     const i = Number(m.dataset.index);
     const distance = Math.abs(i - activeIndex);
     m.classList.toggle("is-active", i === activeIndex);
-    // Beyond VISIBLE_NEIGHBORS the marker is essentially invisible;
-    // within range it fades linearly with distance so the active
-    // one reads brightest. Math.max prevents pure-zero so a
-    // re-click on a barely-visible marker still works.
-    const opacity =
-      distance === 0
-        ? 1
-        : Math.max(0.05, 1 - distance / (VISIBLE_NEIGHBORS + 1));
+    // Gentle decay with a 0.4 floor so distant eras stay readable.
+    // Earlier versions decayed all the way to 0.05, which made
+    // far-away labels essentially invisible — fine for visual
+    // focus but bad for orientation, since users couldn't see how
+    // far back history extends without clicking through. The 0.4
+    // minimum keeps the active era clearly brightest while every
+    // era remains legible at a glance.
+    const opacity = distance === 0 ? 1 : Math.max(0.4, 1 - distance * 0.15);
     m.style.opacity = String(opacity);
   });
 

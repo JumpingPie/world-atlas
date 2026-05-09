@@ -299,7 +299,13 @@
           return;
         }
         const direction = event.key === "ArrowUp" ? -1 : 1;
-        const evt = new CustomEvent("timeline-step", { detail: { direction } });
+        // bubbles:true lets the event reach the document listener
+        // inside timeline.js, which doesn't know about the bottom
+        // panel element specifically.
+        const evt = new CustomEvent("timeline-step", {
+          detail: { direction },
+          bubbles: true,
+        });
         bottomPanel.dispatchEvent(evt);
         event.preventDefault();
       });

@@ -86,8 +86,24 @@ export function writeCache(key, data) {
 }
 
 /**
+ * In-flight promise map. Coalesces concurrent calls to the same
+ * key — if three cards all call getOrFetch("wikidata-stats:818")
+ * at the same time, only the first triggers a network request and
+ * the other two await the same promise.
+ *
+ * Without this, simultaneous mounts of the stats card, summary
+ * card, and bottom-panel timeline (all of which call
+ * fetchCountryStats) would each fire their own SPARQL query for
+ * the same country before any of them got far enough to write the
+ * cache entry — tripling the load on Wikidata's rate limiter for
+ * no benefit.
+ */
+const inFlight = new Map();
+
+/**
  * Get-or-fetch helper. Tries the cache; on miss, runs the fetcher,
- * caches the result, and returns it.
+ * caches the result, and returns it. Concurrent calls with the
+ * same key share one fetch.
  *
  * @param {string} key
  * @param {number} ttlMs - Max acceptable age for the cached value.
@@ -98,9 +114,29 @@ export async function getOrFetch(key, ttlMs, fetcher) {
   const cached = readCache(key, ttlMs);
   if (cached !== undefined) return cached;
 
-  const data = await fetcher();
-  writeCache(key, data);
-  return data;
+  // If a fetch for this key is already in flight, return the same
+  // promise instead of starting another one. The first caller's
+  // fetcher() is the only one that runs; everyone else awaits the
+  // same result.
+  if (inFlight.has(key)) {
+    return inFlight.get(key);
+  }
+
+  const promise = (async () => {
+    try {
+      const data = await fetcher();
+      writeCache(key, data);
+      return data;
+    } finally {
+      // Clear the in-flight entry whether we resolved or rejected,
+      // so the next call (after a failure) can retry. With this,
+      // a transient network error doesn't poison the key forever.
+      inFlight.delete(key);
+    }
+  })();
+
+  inFlight.set(key, promise);
+  return promise;
 }
 
 /**

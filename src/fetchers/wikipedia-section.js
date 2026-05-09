@@ -20,6 +20,7 @@
 // the response.
 
 import { getOrFetch } from "../core/data-cache.js";
+import { fetchWithRetry } from "../core/http.js";
 
 const ACTION_API = "https://en.wikipedia.org/w/api.php";
 
@@ -91,7 +92,7 @@ async function fetchSectionList(title) {
     formatversion: "2",
     origin: "*",
   });
-  const res = await fetch(`${ACTION_API}?${params}`, {
+  const res = await fetchWithRetry(`${ACTION_API}?${params}`, {
     headers: {
       Accept: "application/json",
       "Api-User-Agent": USER_AGENT,
@@ -122,7 +123,7 @@ async function fetchSectionHtml(title, sectionIndex) {
     formatversion: "2",
     origin: "*",
   });
-  const res = await fetch(`${ACTION_API}?${params}`, {
+  const res = await fetchWithRetry(`${ACTION_API}?${params}`, {
     headers: {
       Accept: "application/json",
       "Api-User-Agent": USER_AGENT,

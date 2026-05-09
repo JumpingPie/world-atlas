@@ -33,6 +33,7 @@
 //     atlas, but adds complexity. Section 8+.
 
 import { getOrFetch } from "../core/data-cache.js";
+import { fetchWithRetry } from "../core/http.js";
 
 const SPARQL_ENDPOINT = "https://query.wikidata.org/sparql";
 
@@ -140,7 +141,7 @@ async function runQuery(isoNumeric) {
   url.searchParams.set("query", buildQuery(isoNumeric));
   url.searchParams.set("format", "json");
 
-  const res = await fetch(url, {
+  const res = await fetchWithRetry(url, {
     headers: {
       Accept: "application/sparql-results+json",
       // The Wikimedia query service requires a User-Agent; setting it
