@@ -1,43 +1,43 @@
 // src/core/timeline.js
 //
-// Curved-baseline timeline visualization.
+// Vertical timeline visualization with split layout.
 //
-// Builds an SVG showing the country's eras as markers placed along
-// a gently curved baseline path, with a description card below for
-// the active era. Click any marker to make it active; the focus
-// shifts (opacity-encoded so adjacent eras stay readable while
-// distant ones fade), and the description swaps.
+// The timeline lives inside the bottom drawer and shows the
+// country's eras as a vertical rail on the left, with the active
+// era's description filling the right side of the panel.
 //
-// Why a curved baseline rather than a flat strip: visual character
-// — it evokes a paper scroll being held up at the corners, fits the
-// atlas-as-paper aesthetic without needing decorative scrollwork.
-// The curve is subtle enough that era spacing is still scannable
-// left-to-right.
+// Why vertical: era titles are textual labels (sometimes long, like
+// "Holy Roman Empire" or "Cold War period"), and rendering them
+// horizontally side-by-side caused them to overlap and become
+// unreadable. Vertical stacking gives each label its own row so
+// they're always legible.
 //
-// What this owns: only the timeline DOM construction and its
-// internal active-era state. Data fetching is upstream (the bottom
-// panel manager calls the Wikipedia timeline fetcher and passes the
-// resulting era array in). HTML rendering for era descriptions
-// reuses the .summary-section CSS class so Wikipedia citation
-// suppression and link rewriting are consistent with the History
-// tab in the summary card.
+// Why windowed: showing all 8–15 eras at once (all the way from
+// "Prehistory" to "Contemporary") makes the rail too dense to
+// scan. Instead we center the active era and fade neighbors with
+// distance, so only ~3–5 eras are clearly visible at any time and
+// the user navigates with the arrow buttons or keyboard. This is
+// the same opacity-decay focus model as the original horizontal
+// design, just with a vertical visual stack and a scrollIntoView
+// auto-centering instead of computed Bezier positions.
+//
+// Interactions:
+//   - Click an era marker to make it active.
+//   - Click the up/down arrow buttons in the rail header/footer to
+//     step through eras.
+//   - Press ArrowUp / ArrowDown anywhere on the page (when the
+//     bottom drawer is open) — the keyboard handler in index.html
+//     dispatches a "timeline-step" event on the bottom panel; we
+//     listen for it here.
 
-// SVG geometry constants. Adjust to retune the curve's pronouncement
-// or marker spacing without touching the layout code.
-const SVG_HEIGHT = 110; // total vertical space for the curve + labels
-const PADDING_X = 36; // pixel inset from left/right edges to the curve endpoints
-const ENDPOINT_Y = 38; // y of the curve at left/right endpoints
-const SAG_Y = 78; // y at the curve's midpoint — higher value = more sag
-const MARKER_RADIUS_ACTIVE = 7;
-const MARKER_RADIUS_INACTIVE = 4;
-const LABEL_OFFSET_Y = 18; // distance below marker for label baseline
+const VISIBLE_NEIGHBORS = 2;
 
 /**
  * Build a timeline DOM element from an array of era objects.
  *
  * @param {Array<object>} eras - Era objects from the Wikipedia
  *     timeline fetcher; ordered chronologically (oldest → newest).
- * @returns {HTMLElement} The timeline root.
+ * @returns {HTMLElement} The timeline root element.
  */
 export function createTimeline(eras) {
   const root = document.createElement("div");
@@ -51,166 +51,172 @@ export function createTimeline(eras) {
     return root;
   }
 
-  // Default to the most recent era — that's where users land most
-  // usefully ("how did the country get to where it is today"). They
-  // can click backward to explore earlier eras.
+  // Default active era is the most recent one — that's where users
+  // most often want to start ("how did this country get to today").
+  // From there they can navigate backward into earlier history.
   let activeIndex = eras.length - 1;
 
-  const svg = buildSvg(eras);
-  const eraCard = document.createElement("div");
-  eraCard.className = "timeline-era-card summary-section";
+  const rail = buildRail(eras);
+  const card = document.createElement("div");
+  card.className = "timeline-era-card summary-section";
 
-  root.appendChild(svg);
-  root.appendChild(eraCard);
-
-  // Wire up click handlers on each marker. The marker datum carries
-  // the era's index (set when we build the SVG), so the handler can
-  // pull it from the dataset attribute without a closure-per-marker
-  // setup that would scale poorly with many eras.
-  svg.querySelectorAll(".timeline-marker").forEach((marker) => {
-    marker.addEventListener("click", () => {
-      const idx = Number(marker.dataset.index);
-      if (Number.isFinite(idx)) setActive(idx);
-    });
-  });
+  root.appendChild(rail);
+  root.appendChild(card);
 
   function setActive(index) {
+    if (index < 0 || index >= eras.length) return;
     activeIndex = index;
-    updateMarkerStyles(svg, activeIndex);
-    updateEraCard(eraCard, eras[activeIndex]);
+    updateRail(rail, activeIndex);
+    updateCard(card, eras[activeIndex]);
   }
+
+  // Click handlers on era markers.
+  rail.addEventListener("click", (event) => {
+    const marker = event.target.closest(".timeline-marker");
+    if (!marker) return;
+    const idx = Number(marker.dataset.index);
+    if (Number.isFinite(idx)) setActive(idx);
+  });
+
+  // Arrow buttons at the top and bottom of the rail.
+  rail
+    .querySelector(".timeline-prev")
+    ?.addEventListener("click", () => setActive(activeIndex - 1));
+  rail
+    .querySelector(".timeline-next")
+    ?.addEventListener("click", () => setActive(activeIndex + 1));
+
+  // Keyboard step events — dispatched on the bottom panel by the
+  // global keydown handler in index.html when the panel is open.
+  // We listen on the document because by the time this timeline is
+  // rendered, the bottom panel might have been re-mounted with new
+  // content; document is a stable target.
+  const onTimelineStep = (event) => {
+    // Only respond if this timeline is still in the DOM. Older
+    // timelines that were replaced when the user clicked another
+    // country shouldn't react to keyboard input.
+    if (!root.isConnected) return;
+    setActive(activeIndex + (event.detail?.direction ?? 0));
+  };
+  document.addEventListener("timeline-step", onTimelineStep);
+  // The listener leaks if the element is removed without cleanup,
+  // but the bottom panel manager always replaces the entire root
+  // (replaceChildren), so the orphaned listener has no effect on
+  // the new content. The isConnected guard above is the actual
+  // safety net.
 
   setActive(activeIndex);
   return root;
 }
 
 /**
- * Build the SVG containing the curved baseline path and one marker
- * group per era. Marker positions are computed by sampling a
- * quadratic Bezier curve at evenly-spaced parameter values.
+ * Build the rail: prev arrow at top, era list in the middle,
+ * next arrow at bottom. The list contains every era; CSS plus
+ * scrollIntoView control which ones are visible.
  */
-function buildSvg(eras) {
-  // viewBox width is set to a nominal 1000; the actual rendered
-  // width comes from CSS (100% of container). Scaling is uniform
-  // so the curve looks the same at any container width.
-  const W = 1000;
-  const H = SVG_HEIGHT;
+function buildRail(eras) {
+  const rail = document.createElement("div");
+  rail.className = "timeline-rail";
 
-  // Quadratic Bezier control points for the baseline. The path goes
-  // from a point on the left, sags through the middle, and rises to
-  // a point on the right. SAG_Y > ENDPOINT_Y produces the sag; if
-  // we ever flip it, the curve becomes a hump.
-  const x0 = PADDING_X;
-  const y0 = ENDPOINT_Y;
-  const xc = W / 2;
-  const yc = SAG_Y;
-  const x1 = W - PADDING_X;
-  const y1 = ENDPOINT_Y;
+  const prev = document.createElement("button");
+  prev.type = "button";
+  prev.className = "timeline-nav timeline-prev";
+  prev.setAttribute("aria-label", "Earlier era");
+  prev.textContent = "▲";
+  rail.appendChild(prev);
 
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("class", "timeline-svg");
-  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
-  svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+  // Wrapper exists so we can have overflow:hidden on the scroll
+  // container while letting scrollIntoView operate inside it. The
+  // <ol> itself has no overflow — it's just the content.
+  const wrap = document.createElement("div");
+  wrap.className = "timeline-era-list-wrap";
 
-  // Baseline path — drawn behind the markers.
-  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  path.setAttribute("class", "timeline-baseline");
-  path.setAttribute("d", `M ${x0},${y0} Q ${xc},${yc} ${x1},${y1}`);
-  path.setAttribute("fill", "none");
-  svg.appendChild(path);
+  const list = document.createElement("ol");
+  list.className = "timeline-era-list";
+  eras.forEach((era, i) => {
+    const li = document.createElement("li");
+    li.className = "timeline-marker";
+    li.dataset.index = String(i);
 
-  // Marker positions: sample t = i/(N-1) along the Bezier. With one
-  // era, t is undefined (0/0); place that single marker at the
-  // curve's midpoint.
-  const n = eras.length;
-  for (let i = 0; i < n; i++) {
-    const t = n === 1 ? 0.5 : i / (n - 1);
-    const [mx, my] = bezier(t, x0, y0, xc, yc, x1, y1);
-    svg.appendChild(buildMarker(eras[i], i, mx, my));
+    const dot = document.createElement("span");
+    dot.className = "timeline-marker-dot";
+    li.appendChild(dot);
+
+    const label = document.createElement("span");
+    label.className = "timeline-marker-label";
+    label.textContent = era.title;
+    li.appendChild(label);
+
+    list.appendChild(li);
+  });
+  wrap.appendChild(list);
+  rail.appendChild(wrap);
+
+  const next = document.createElement("button");
+  next.type = "button";
+  next.className = "timeline-nav timeline-next";
+  next.setAttribute("aria-label", "Later era");
+  next.textContent = "▼";
+  rail.appendChild(next);
+
+  return rail;
+}
+
+/**
+ * Update the rail's visual state for a new active era. Centers the
+ * active marker in the wrapper, applies opacity decay to neighbors,
+ * and disables the prev/next buttons at the edges.
+ */
+function updateRail(rail, activeIndex) {
+  const wrap = rail.querySelector(".timeline-era-list-wrap");
+  const markers = rail.querySelectorAll(".timeline-marker");
+
+  markers.forEach((m) => {
+    const i = Number(m.dataset.index);
+    const distance = Math.abs(i - activeIndex);
+    m.classList.toggle("is-active", i === activeIndex);
+    // Beyond VISIBLE_NEIGHBORS the marker is essentially invisible;
+    // within range it fades linearly with distance so the active
+    // one reads brightest. Math.max prevents pure-zero so a
+    // re-click on a barely-visible marker still works.
+    const opacity =
+      distance === 0
+        ? 1
+        : Math.max(0.05, 1 - distance / (VISIBLE_NEIGHBORS + 1));
+    m.style.opacity = String(opacity);
+  });
+
+  // Center the active marker in its scrollable wrapper. We use the
+  // browser's native scroll-into-view rather than computing an
+  // explicit transform — it adapts to actual rendered marker
+  // heights without us having to assume a fixed row size.
+  const activeMarker = rail.querySelector(
+    `.timeline-marker[data-index="${activeIndex}"]`
+  );
+  if (activeMarker && wrap) {
+    // scrollIntoView with block:"center" centers the element
+    // vertically within its nearest scrollable ancestor, which is
+    // the wrapper because we set overflow:hidden on it in CSS.
+    activeMarker.scrollIntoView({ block: "center", behavior: "smooth" });
   }
 
-  return svg;
+  // Edge-state arrows: at the first or last era, the corresponding
+  // direction has nowhere to go. Disabling rather than hiding keeps
+  // the visual layout stable.
+  const prevBtn = rail.querySelector(".timeline-prev");
+  const nextBtn = rail.querySelector(".timeline-next");
+  if (prevBtn) prevBtn.disabled = activeIndex === 0;
+  if (nextBtn) nextBtn.disabled = activeIndex === markers.length - 1;
 }
 
 /**
- * Compute (x, y) on a quadratic Bezier at parameter t in [0, 1].
- * Inlined here rather than imported because it's a four-line
- * formula and adding a math utility module for one use is overkill.
+ * Render the active era's title and description into the right-
+ * side card. We reuse the .summary-section class on the parent so
+ * the same Wikipedia-HTML cleanup CSS used by the summary card's
+ * History tab also applies here — citation suppression, paragraph
+ * spacing, link styling are all shared.
  */
-function bezier(t, x0, y0, xc, yc, x1, y1) {
-  const u = 1 - t;
-  const x = u * u * x0 + 2 * u * t * xc + t * t * x1;
-  const y = u * u * y0 + 2 * u * t * yc + t * t * y1;
-  return [x, y];
-}
-
-/**
- * Build one marker group containing a circle, a label, and a
- * data-index attribute used by the click handler.
- */
-function buildMarker(era, index, x, y) {
-  const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-  g.setAttribute("class", "timeline-marker");
-  g.setAttribute("transform", `translate(${x}, ${y})`);
-  g.dataset.index = String(index);
-
-  const circle = document.createElementNS(
-    "http://www.w3.org/2000/svg",
-    "circle"
-  );
-  circle.setAttribute("class", "timeline-marker-dot");
-  circle.setAttribute("r", String(MARKER_RADIUS_INACTIVE));
-  g.appendChild(circle);
-
-  const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-  text.setAttribute("class", "timeline-marker-label");
-  text.setAttribute("text-anchor", "middle");
-  text.setAttribute("y", String(LABEL_OFFSET_Y));
-  text.textContent = era.title;
-  g.appendChild(text);
-
-  return g;
-}
-
-/**
- * Apply the active/dim styling to markers based on distance from the
- * active index. Mutates the existing SVG without re-building it so
- * transitions can interpolate cleanly.
- *
- * Opacity decay: the active marker is fully opaque, each step away
- * loses 0.18, clamped at 0.18 minimum so very-distant eras remain
- * visible. The active marker also grows in radius (set as an attr
- * directly so CSS transitions can animate it).
- */
-function updateMarkerStyles(svg, activeIndex) {
-  svg.querySelectorAll(".timeline-marker").forEach((marker) => {
-    const i = Number(marker.dataset.index);
-    const distance = Math.abs(i - activeIndex);
-    const opacity = Math.max(0.18, 1 - distance * 0.18);
-    marker.style.opacity = String(opacity);
-    marker.classList.toggle("is-active", i === activeIndex);
-
-    const dot = marker.querySelector(".timeline-marker-dot");
-    if (dot) {
-      dot.setAttribute(
-        "r",
-        String(i === activeIndex ? MARKER_RADIUS_ACTIVE : MARKER_RADIUS_INACTIVE)
-      );
-    }
-  });
-}
-
-/**
- * Render the active era's description into the card area below the
- * curve. We reuse the .summary-section class on the parent so the
- * shared Wikipedia-HTML cleanup CSS (citation suppression, link
- * styling, paragraph spacing) applies without duplication.
- *
- * Internal links are rewritten to absolute Wikipedia URLs and set to
- * open in a new tab — same approach as the summary card's History
- * tab.
- */
-function updateEraCard(card, era) {
+function updateCard(card, era) {
   card.replaceChildren();
 
   const heading = document.createElement("h3");
@@ -222,7 +228,9 @@ function updateEraCard(card, era) {
   body.className = "timeline-era-body";
   body.innerHTML = era.descriptionHtml;
 
-  // Same outbound-link normalization as the summary card.
+  // Same outbound-link normalization as the summary card uses for
+  // its History tab: rewrite relative /wiki/ links to absolute
+  // Wikipedia URLs and ensure they open in a new tab.
   body.querySelectorAll('a[href^="/wiki/"]').forEach((a) => {
     a.setAttribute(
       "href",
@@ -240,7 +248,7 @@ function updateEraCard(card, era) {
   if (era.sourceUrl) {
     const source = document.createElement("div");
     source.className = "timeline-era-source";
-    source.innerHTML = `<a href="${era.sourceUrl}" target="_blank" rel="noopener">Read on Wikipedia &rarr;</a>`;
+    source.innerHTML = `<a href="${era.sourceUrl}" target="_blank" rel="noopener">Read this section on Wikipedia &rarr;</a>`;
     card.appendChild(source);
   }
 }

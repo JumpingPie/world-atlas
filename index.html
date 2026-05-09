@@ -156,6 +156,38 @@
             atlas theme. aria-hidden because it's purely decorative.
           -->
           <div class="paper-effects" aria-hidden="true"></div>
+
+          <!--
+            Bottom panel: timeline drawer.
+
+            Lives INSIDE map-container as an absolute-positioned
+            overlay so opening/closing it doesn't reflow the layout
+            (the map keeps its size; the panel slides over the
+            bottom of the map area).
+
+            Three states, controlled by classes:
+              - default (no selection): translateY(100%) — fully
+                hidden, no affordance.
+              - .is-available (selection active): translateY shifts
+                up by 32px so the handle peeks above the bottom edge.
+              - .is-available.is-open: translateY(0) — full panel
+                visible, overlaying the bottom of the map area.
+
+            Click the handle to toggle between the second and third
+            states. No drag — the panel only has two meaningful
+            states, so dragging would be a wasted affordance.
+          -->
+          <div id="bottom-panel" class="bottom-panel" aria-label="Timeline">
+            <button class="bottom-panel-handle" type="button" aria-label="Toggle timeline">
+              <span class="bottom-panel-arrow" aria-hidden="true">&#9650;</span>
+              <span class="bottom-panel-label">Timeline</span>
+            </button>
+            <div class="bottom-panel-content">
+              <p class="panel-stub">
+                Select a country to see its timeline.
+              </p>
+            </div>
+          </div>
         </main>
 
         <!--
@@ -168,35 +200,6 @@
           class="side-panel right-panel"
           aria-label="Selection details"
         ></aside>
-      </div>
-
-      <!--
-        Bottom panel: timeline. Selection-gated drawer.
-
-          - Hidden entirely (height 0) when no country or region is
-            selected. The user has nothing to time-line, so the panel
-            isn't even an affordance.
-          - When a selection is made (.is-available added), the
-            32px handle slides up. The panel itself stays mostly
-            collapsed; only the handle is visible.
-          - Clicking the handle (or dragging it up) expands the
-            panel to its full height. Clicking again or dragging
-            down collapses it back to handle-only.
-          - Clearing the selection collapses the panel entirely.
-
-        Populated in Section 8 with the actual era/event timeline.
-      -->
-      <div id="bottom-panel" class="bottom-panel" aria-label="Timeline">
-        <button class="bottom-panel-handle" type="button" aria-label="Toggle timeline">
-          <span class="bottom-panel-arrow" aria-hidden="true">&#9650;</span>
-          <span class="bottom-panel-label">Timeline</span>
-        </button>
-        <div class="bottom-panel-content">
-          <p class="panel-stub">
-            A horizontal timeline with era segments and event drill-
-            downs will appear here in a later section.
-          </p>
-        </div>
       </div>
     </div>
 
@@ -257,21 +260,16 @@
 
       // Bottom panel — selection-gated drawer with handle.
       //
-      // Lifecycle:
-      //   - .is-available added when a selection exists; removed when
-      //     it clears. Controls whether the handle is visible at all.
-      //   - .is-open toggled by user interaction with the handle.
-      //     Clearing the selection also clears .is-open so the panel
-      //     fully collapses.
+      // Two state classes:
+      //   - .is-available: a country or region is selected; the
+      //     handle peeks above the bottom edge as an affordance.
+      //   - .is-open (only meaningful while .is-available): the
+      //     panel is fully expanded and shows its content.
       //
-      // Interaction:
-      //   - Click the handle: toggle open/closed.
-      //   - Drag the handle up/down: panel grows/shrinks live.
-      //     On release, snaps to whichever extreme is closer.
-      //
-      // We distinguish click vs drag by movement threshold: a
-      // mousedown→mouseup with less than 4px of vertical movement is
-      // a click; otherwise it's treated as a drag.
+      // The drawer has only two meaningful sizes (handle peek vs
+      // full open), so a click toggle is the only interaction —
+      // drag-to-resize was tried and removed because there's no
+      // intermediate position worth dragging to.
       const bottomPanel = document.getElementById("bottom-panel");
       const bottomHandle = bottomPanel.querySelector(".bottom-panel-handle");
 
@@ -283,64 +281,27 @@
       on("selectedCountry", syncBottomPanelAvailability);
       on("selectedRegion", syncBottomPanelAvailability);
 
-      const HANDLE_HEIGHT = 32;
-      const OPEN_HEIGHT_PX = Math.min(280, window.innerHeight * 0.38);
-      const DRAG_THRESHOLD = 4;
+      bottomHandle.addEventListener("click", () => {
+        bottomPanel.classList.toggle("is-open");
+      });
 
-      let dragStartY = 0;
-      let dragStartHeight = 0;
-      let isDragging = false;
-
-      function onDragMove(event) {
-        const dy = dragStartY - event.clientY;
-        if (!isDragging && Math.abs(dy) > DRAG_THRESHOLD) {
-          isDragging = true;
-          // Disable the height transition while dragging — otherwise
-          // each pixel of mouse movement would animate over 220ms,
-          // making the drag feel laggy and rubber-banded.
-          bottomPanel.style.transition = "none";
+      // Keyboard navigation through the timeline. ArrowUp / ArrowDown
+      // step backward/forward through eras, but only when the bottom
+      // panel is open and a country is selected — otherwise arrows
+      // behave normally (e.g. scrolling the page).
+      window.addEventListener("keydown", (event) => {
+        if (!bottomPanel.classList.contains("is-open")) return;
+        if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+        // Don't hijack arrows while the user is in a text input.
+        const target = event.target;
+        const tag = target?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable) {
+          return;
         }
-        if (!isDragging) return;
-        const maxHeight = Math.min(window.innerHeight * 0.6, 600);
-        const newHeight = Math.max(
-          HANDLE_HEIGHT,
-          Math.min(maxHeight, dragStartHeight + dy)
-        );
-        bottomPanel.style.height = `${newHeight}px`;
-        bottomPanel.style.flexBasis = `${newHeight}px`;
-      }
-
-      function onDragEnd() {
-        document.removeEventListener("mousemove", onDragMove);
-        document.removeEventListener("mouseup", onDragEnd);
-
-        const finalHeight = bottomPanel.offsetHeight;
-        // Reset inline overrides so CSS takes back control. The
-        // transition style is cleared too so the next class change
-        // animates normally.
-        bottomPanel.style.height = "";
-        bottomPanel.style.flexBasis = "";
-        bottomPanel.style.transition = "";
-
-        if (isDragging) {
-          // Snap to whichever endpoint is closer. The midpoint
-          // between handle-only and fully-open is the threshold.
-          const midpoint = (HANDLE_HEIGHT + OPEN_HEIGHT_PX) / 2;
-          bottomPanel.classList.toggle("is-open", finalHeight > midpoint);
-        } else {
-          // No drag — treat as a click and toggle.
-          bottomPanel.classList.toggle("is-open");
-        }
-        isDragging = false;
-      }
-
-      bottomHandle.addEventListener("mousedown", (event) => {
+        const direction = event.key === "ArrowUp" ? -1 : 1;
+        const evt = new CustomEvent("timeline-step", { detail: { direction } });
+        bottomPanel.dispatchEvent(evt);
         event.preventDefault();
-        dragStartY = event.clientY;
-        dragStartHeight = bottomPanel.offsetHeight;
-        isDragging = false;
-        document.addEventListener("mousemove", onDragMove);
-        document.addEventListener("mouseup", onDragEnd);
       });
 
       // Panel can be initialized synchronously; it just listens for
