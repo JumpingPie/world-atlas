@@ -212,6 +212,7 @@
       import { on, getCurrentSelection } from "./src/core/state.js";
       import { initLayerManager } from "./src/core/layer-manager.js";
       import { initLayerControls } from "./src/core/layer-controls.js";
+      import { initBottomPanel } from "./src/core/bottom-panel.js";
 
       const container = document.getElementById("map-container");
       const panelContainer = document.getElementById("country-panel");
@@ -366,6 +367,15 @@
         initLayerManager(mapHandle);
         initLayerControls(
           document.querySelector("#left-panel .panel-cards")
+        );
+
+        // Bottom panel content manager — renders the timeline (or
+        // an appropriate placeholder) in the bottom drawer based on
+        // the current selection. The drawer's open/closed state is
+        // managed by the handle elsewhere in this script; this is
+        // strictly about what's *inside* it.
+        initBottomPanel(
+          document.querySelector("#bottom-panel .bottom-panel-content")
         );
 
         // Loading message removal happens after init resolves so users
