@@ -83,16 +83,7 @@ body {
   height: 100vh;
 }
 
-.app-header {
-  flex: 0 0 auto;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--color-panel-border);
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-/* The middle row: left panel | map | right panel.
+/* The single full-height row: left panel | map | right panel.
  * min-height:0 is critical — without it the flex children won't
  * shrink below their content size, which would break the layout
  * when panels are full of content. */
@@ -101,56 +92,7 @@ body {
   min-height: 0;
   display: flex;
   overflow: hidden;
-}
-
-.app-header h1 {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.app-header .subtitle {
-  color: var(--color-text-dim);
-  font-size: 0.85rem;
-}
-
-/* Right-aligned cluster of header buttons (panel toggles + theme).
- * margin-left:auto pushes the cluster to the right edge of the
- * header without needing a separate wrapper. */
-.app-header .header-controls {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-/* Shared button style for header controls. Used by panel toggles
- * (Layers, Timeline) and the theme toggle. The .is-active state
- * (applied by the toggle handler when the corresponding panel is
- * open) provides visual feedback on which panels are currently up. */
-.app-header .header-btn,
-.app-header .theme-toggle {
-  background: transparent;
-  color: var(--color-text-dim);
-  border: 1px solid var(--color-panel-border);
-  border-radius: 4px;
-  padding: 0.3rem 0.7rem;
-  font-size: 0.8rem;
-  font-family: var(--font-sans);
-  cursor: pointer;
-  transition: background 120ms ease, color 120ms ease;
-}
-
-.app-header .header-btn:hover,
-.app-header .theme-toggle:hover {
-  background: var(--color-hover-overlay);
-  color: var(--color-text);
-}
-
-.app-header .header-btn.is-active {
-  background: var(--color-active-overlay);
-  color: var(--color-text);
+  height: 100%;
 }
 
 #map-container {
@@ -433,6 +375,113 @@ body {
 
 .map-control-btn:active {
   background: var(--color-active-overlay);
+}
+
+/* ---------- Layer panel handle ----------
+ *
+ * Vertical edge handle on the left side of the map area. Mirrors
+ * the bottom drawer's handle pattern: a small always-present
+ * affordance at the edge; clicking toggles the layer panel.
+ *
+ * Lives inside #map-container as an absolute overlay so it tracks
+ * the map's left edge — when the layer panel opens, the map shrinks
+ * and the handle moves with it, ending up flush against the panel's
+ * right border (i.e. always at the panel/map seam).
+ *
+ * Vertically centered to stay clear of the +/- zoom controls in the
+ * top-left corner. Bottom corner is also free for future controls
+ * (e.g. a contested-entities toggle, search) without crowding. */
+.map-layer-handle {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 130px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  background: var(--color-panel-bg);
+  color: var(--color-text-dim);
+  border: 1px solid var(--color-panel-border);
+  /* No left border — the handle is flush against the panel's right
+   * edge when open and the page edge when closed. The right border
+   * is the visible seam in both cases. */
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  /* user-select:none keeps text selection from triggering when the
+   * user clicks the label rather than empty handle space. */
+  user-select: none;
+  z-index: 5;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.map-layer-handle:hover {
+  background: var(--color-hover-overlay);
+  color: var(--color-text);
+}
+
+.map-layer-handle.is-active {
+  background: var(--color-active-overlay);
+  color: var(--color-text);
+}
+
+/* Arrow — points right (▶) when closed, rotates 180° to point left
+ * (◀) when open. Encoding the open/closed state in the arrow's
+ * direction matches the bottom drawer's vertical-arrow pattern, just
+ * rotated 90°. */
+.map-layer-handle-arrow {
+  display: inline-block;
+  font-size: 0.65rem;
+  line-height: 1;
+  transition: transform 220ms ease;
+}
+
+.map-layer-handle.is-active .map-layer-handle-arrow {
+  transform: rotate(180deg);
+}
+
+/* Vertically-oriented "LAYERS" label. writing-mode:vertical-rl
+ * stacks the glyphs top-to-bottom along the strip, reading downward
+ * — the most common convention for left-edge vertical labels in
+ * Western web UI. */
+.map-layer-handle-label {
+  writing-mode: vertical-rl;
+}
+
+/* ---------- Theme toggle ----------
+ *
+ * Floats in the top-right corner of the map area (mirroring the
+ * top-left zoom controls). Tracks the map's right edge so it stays
+ * visible as the right (selection) panel opens and shrinks the map.
+ * Same chrome as the zoom controls so the two corner controls read
+ * as a unified pair. */
+.map-theme-toggle {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  background: var(--color-panel-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-panel-border);
+  border-radius: 4px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  z-index: 5;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.map-theme-toggle:hover {
+  background: var(--color-hover-overlay);
+  color: var(--color-text);
 }
 
 /* ---------- Side and bottom panels ----------

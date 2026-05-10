@@ -8,6 +8,13 @@
       name="description"
       content="Interactive research atlas: country profiles, multilateral relations, conflicts, alliances, and trade."
     />
+    <!--
+      Empty data-URL favicon. Stops browsers from requesting
+      /favicon.ico (which doesn't exist and would 404 in the server
+      log on every page load). Replace with a real .ico/.svg if a
+      branded favicon is wanted later.
+    -->
+    <link rel="icon" href="data:," />
 
     <link rel="stylesheet" href="styles/main.css" />
     <!--
@@ -58,67 +65,36 @@
   </head>
   <body>
     <!--
-      App shell — three-panel layout.
+      App shell — single-row layout, no header.
 
       Structure:
         #app (column flex)
-          .app-header
-          .app-body (row flex)
-            #left-panel  (collapsed: width 0; expanded: ~320px)
+          .app-body (row flex, fills viewport)
+            #left-panel  (collapsed: width 0; expanded: ~300px)
             #map-container (flex:1, takes remaining space)
+              .map-controls (top-left zoom +/-)
+              .map-theme-toggle (top-right theme cycle button)
+              .map-layer-handle (left-edge handle that toggles #left-panel)
+              #bottom-panel (selection-gated drawer overlay)
             #country-panel (collapsed: width 0; expanded: ~380px)
-          #bottom-panel (collapsed: height 0; expanded: ~240px)
 
-      Each panel collapses to zero in its primary axis when closed
-      and expands to its declared size when .is-open is applied.
-      The map container is a flex sibling so it auto-resizes when
-      panels toggle — no JS layout math needed. A ResizeObserver in
-      map.js re-fits the projection so the world geometry uses the
-      newly available space rather than just being letterboxed by
-      the SVG's preserveAspectRatio.
+      Each side panel collapses to zero in its primary axis when
+      closed and expands to its declared size when .is-open is
+      applied. The map container is a flex sibling so it auto-
+      resizes when panels toggle — no JS layout math needed. A
+      ResizeObserver in map.js re-fits the projection so the world
+      geometry uses the newly available space rather than being
+      letterboxed by the SVG's preserveAspectRatio.
 
-      Right panel opens automatically when the user selects a
-      country or region (via panel.js subscribing to state).
-      Left and bottom panels are manual: header buttons toggle
-      their .is-open class.
+      The right panel opens automatically when the user selects a
+      country or region (via panel.js subscribing to state). The
+      left panel is manual via the .map-layer-handle on the map's
+      left edge. The bottom panel is selection-gated and toggled
+      by its own handle. The theme toggle floats in the map's top-
+      right corner so it tracks the map's right edge as the right
+      panel opens.
     -->
     <div id="app">
-      <header class="app-header">
-        <h1>world-atlas</h1>
-        <span class="subtitle">multilateral relations &middot; sovereign states</span>
-        <div class="header-controls">
-          <!--
-            Toggles for the side and bottom panels. data-target points
-            at the panel's element ID so the click handler can find it
-            without a separate registration step.
-          -->
-          <button
-            class="header-btn"
-            id="toggle-left"
-            data-target="left-panel"
-            type="button"
-          >
-            Layers
-          </button>
-          <!--
-            Timeline button intentionally absent. The bottom timeline
-            panel is selection-gated: it has nothing to show when no
-            country or region is selected. Discovery happens through
-            the handle at the bottom of the screen, which appears as
-            soon as a selection is made.
-          -->
-
-          <!--
-            Theme toggle. Label set at startup (and updated on click)
-            to show the *next* theme — reads as a verb ("Atlas" =
-            "switch to atlas") rather than as a current-state indicator.
-          -->
-          <button class="theme-toggle" id="theme-toggle" type="button">
-            Theme
-          </button>
-        </div>
-      </header>
-
       <div class="app-body">
         <!--
           Left panel: layer toggles, filters, search. Stub for
@@ -156,6 +132,39 @@
             atlas theme. aria-hidden because it's purely decorative.
           -->
           <div class="paper-effects" aria-hidden="true"></div>
+
+          <!--
+            Left-panel edge handle. Always visible on the map's left
+            edge; click toggles #left-panel. Lives inside
+            #map-container so it tracks the map's left edge as the
+            panel opens/closes. data-target hooks into the same toggle
+            handler as the panel-close button below.
+
+            The arrow points right (▶) when closed and rotates to
+            point left (◀) when the panel is open (via the
+            .is-active class added by the click handler).
+          -->
+          <button
+            class="map-layer-handle"
+            data-target="left-panel"
+            type="button"
+            aria-label="Toggle layers panel"
+          >
+            <span class="map-layer-handle-arrow" aria-hidden="true">&#9654;</span>
+            <span class="map-layer-handle-label">Layers</span>
+          </button>
+
+          <!--
+            Theme toggle. Floats in the top-right corner of the map
+            area. Label set at startup (and updated on click) to show
+            the *next* theme — reads as a verb ("Atlas" = "switch to
+            atlas") rather than as a current-state indicator. Tracks
+            the map's right edge so it stays visible as the right
+            (selection) panel opens.
+          -->
+          <button class="map-theme-toggle" id="theme-toggle" type="button">
+            Theme
+          </button>
 
           <!--
             Bottom panel: timeline drawer.
@@ -237,12 +246,16 @@
         themeBtn.textContent = nextThemeLabel();
       });
 
-      // Panel toggles for the side panels (currently just Layers).
-      // Any button with data-target points at a panel element by ID —
-      // clicking flips the panel's .is-open class and the button's
-      // own .is-active class so the user can see which panels are
-      // open. This handles both the header buttons and the panels'
-      // own close buttons.
+      // Panel toggles. Any element with data-target points at a panel
+      // by ID — clicking flips the panel's .is-open class. The left-
+      // edge map handle (.map-layer-handle) and each panel's own
+      // close button (.panel-close) both ride this same mechanism, so
+      // adding more panel-toggle UI later means just adding data-
+      // target somewhere; no new wiring.
+      //
+      // The .is-active mirroring updates only the *opener* (the map
+      // handle), not the close button — close buttons hide with the
+      // panel itself, so an active state on them is meaningless.
       document.querySelectorAll("[data-target]").forEach((btn) => {
         btn.addEventListener("click", () => {
           const targetId = btn.dataset.target;
@@ -252,7 +265,7 @@
           panel.classList.toggle("is-open", opening);
           document
             .querySelectorAll(
-              `.header-btn[data-target="${targetId}"]`
+              `.map-layer-handle[data-target="${targetId}"]`
             )
             .forEach((b) => b.classList.toggle("is-active", opening));
         });
