@@ -484,6 +484,39 @@ body {
   color: var(--color-text);
 }
 
+/* ---------- Title cartouche ----------
+ *
+ * Floating decorative title near the top center of the map area.
+ * Inline SVG so it scales cleanly to whatever width and inherits
+ * no theme tokens — the cartouche keeps its parchment-and-ink
+ * character regardless of which theme is beneath it.
+ *
+ * Centered with the left:50% / translateX(-50%) idiom so it stays
+ * centered as the map's effective width changes (panels opening
+ * and closing).
+ *
+ * pointer-events:none lets map drag/zoom interactions pass through
+ * the cartouche's invisible bounding box (most of which is empty
+ * SVG). Once clickable headlines are added in the news-banner work,
+ * only the headline element itself will opt back in to clicks.
+ *
+ * z-index 4 keeps it above the paper grain (z=1) but below the
+ * +/- zoom controls and the layer/theme buttons (z=5), so the
+ * cartouche never overlaps a control. */
+.map-cartouche {
+  position: absolute;
+  /* Sits close to the top of the map area to stay unobtrusive,
+   * with just enough margin that the cartouche doesn't visually
+   * collide with the map's top edge. */
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(720px, 85%);
+  height: auto;
+  z-index: 4;
+  pointer-events: none;
+}
+
 /* ---------- Side and bottom panels ----------
  *
  * All three panels (left, right, bottom) live as flex siblings in
@@ -531,10 +564,13 @@ body {
 }
 
 .side-panel.left-panel.is-open {
-  /* Left panel is slightly narrower by default — it hosts compact
-   * controls (toggles, filters), not detail text. */
-  width: min(300px, 32vw);
-  flex-basis: min(300px, 32vw);
+  /* Left panel is narrow because it hosts compact controls (layer
+   * toggles, filters) with short labels — "NATO", "EU", "BRICS",
+   * etc. — not detail text. Sized to the labels' actual reach
+   * rather than to a generic side-panel width, so the panel
+   * doesn't trail dead whitespace to the right of every row. */
+  width: min(220px, 26vw);
+  flex-basis: min(220px, 26vw);
 }
 
 .side-panel.right-panel {

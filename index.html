@@ -134,6 +134,37 @@
           <div class="paper-effects" aria-hidden="true"></div>
 
           <!--
+            Title cartouche. A hand-shaped SVG ornament floating near
+            the top center of the map area, intentionally not touching
+            any edge. Houses the project title; later, the same inner
+            text slot will be used to fade in/out current-events
+            headlines (per the news-banner work in ROADMAP.md item #1).
+
+            Hardcoded warm-brown ink + cream parchment so the cartouche
+            keeps the same Renaissance-map character regardless of
+            which theme is active beneath it.
+
+            pointer-events:none so map drag/zoom interactions still
+            work even when the user clicks where the cartouche sits.
+            When clickable headlines come in, only the inner text node
+            will re-enable pointer-events.
+          -->
+          <svg
+            class="map-cartouche"
+            viewBox="0 0 800 70"
+            preserveAspectRatio="xMidYMid meet"
+            role="img"
+            aria-label="World Atlas"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <title>World Atlas</title>
+            <rect x="60" y="14" width="680" height="42" fill="#f2eadc" stroke="#3d2f20" stroke-width="1.2"/>
+            <line x1="70" y1="20" x2="730" y2="20" stroke="#3d2f20" stroke-width="0.7" stroke-linecap="round" stroke-dasharray="0.6 3" opacity="0.65"/>
+            <line x1="70" y1="50" x2="730" y2="50" stroke="#3d2f20" stroke-width="0.7" stroke-linecap="round" stroke-dasharray="0.6 3" opacity="0.65"/>
+            <text x="400" y="42" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="20" font-weight="500" fill="#3d2f20" letter-spacing="4">WORLD ATLAS</text>
+          </svg>
+
+          <!--
             Left-panel edge handle. Always visible on the map's left
             edge; click toggles #left-panel. Lives inside
             #map-container so it tracks the map's left edge as the
@@ -225,6 +256,7 @@
       import { initLayerManager } from "./src/core/layer-manager.js";
       import { initLayerControls } from "./src/core/layer-controls.js";
       import { initBottomPanel } from "./src/core/bottom-panel.js";
+      import { initTitleNews } from "./src/core/title-news.js";
 
       const container = document.getElementById("map-container");
       const panelContainer = document.getElementById("country-panel");
@@ -327,6 +359,13 @@
       // state changes. The map initializes async because it has to
       // fetch the world TopoJSON before rendering.
       initPanel(panelContainer);
+
+      // Title cartouche cycler — fades the inner text element of
+      // .map-cartouche between "WORLD ATLAS" and current-events
+      // headlines from the Wikipedia portal. Fire-and-forget: the
+      // cartouche stays on the static title if events can't be
+      // loaded.
+      initTitleNews(document.querySelector(".map-cartouche"));
 
       try {
         // initMap returns the map handle other modules will use later
