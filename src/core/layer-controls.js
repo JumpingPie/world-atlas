@@ -35,9 +35,11 @@ const INFO_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 // product judgment ("alliances first") rather than by alphabetical
 // accident.
 const CATEGORY_ORDER = [
+  "universal",
   "alliance",
   "economic",
   "trade",
+  "intergovernmental",
   "treaty",
   "conflict",
   "demographic",
@@ -46,9 +48,11 @@ const CATEGORY_ORDER = [
 // Display names for category headings. Internal ids are lowercase
 // keywords; this maps them to title-case human-readable headings.
 const CATEGORY_LABELS = {
+  universal: "Universal",
   alliance: "Alliances",
   economic: "Economic blocs",
   trade: "Trade",
+  intergovernmental: "Regional intergovernmental",
   treaty: "Treaties",
   conflict: "Conflicts",
   demographic: "Demographics",

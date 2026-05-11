@@ -1,0 +1,17 @@
+{
+  "_schema": "org-membership/v2",
+  "_generated": "2026-05-10T00:00:00Z",
+  "_source": "hand-curated",
+  "_notes": [
+    "AUKUS membership: 3 founding members (Australia, United Kingdom, United States). Announced 15 September 2021."
+  ],
+  "id": "aukus",
+  "name": "AUKUS",
+  "shortName": "AUKUS",
+  "founded": "2021",
+  "headquarters": "No fixed seat (trilateral pact)",
+  "mission": "Trilateral security pact focused on Indo-Pacific defense — most prominently a partnership to provide Australia with nuclear-powered (but conventionally armed) submarines, plus cooperation on advanced military capabilities.",
+  "websiteUrl": null,
+  "wikipediaUrl": "https://en.wikipedia.org/wiki/AUKUS",
+  "members": ["036", "826", "840"]
+}

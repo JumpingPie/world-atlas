@@ -1,0 +1,22 @@
+{
+  "_schema": "org-membership/v2",
+  "_generated": "2026-05-10T00:00:00Z",
+  "_source": "hand-curated",
+  "_notes": [
+    "Organization of American States membership: 35 states of the Americas. Cuba's 1962 suspension was formally lifted in 2009 but Cuba has chosen not to participate; the list below treats it as a member per its formal status. Venezuela's withdrawal (notified 2017) is contested; the OAS considers it a member, the Maduro government does not — included here as the OAS itself does."
+  ],
+  "id": "oas",
+  "name": "Organization of American States",
+  "shortName": "OAS",
+  "founded": "1948",
+  "headquarters": "Washington, D.C., United States",
+  "mission": "Continental organization for the Americas focused on democracy, human rights, security cooperation, and integral development. The principal multilateral forum for the Western Hemisphere.",
+  "websiteUrl": "https://www.oas.org",
+  "wikipediaUrl": "https://en.wikipedia.org/wiki/Organization_of_American_States",
+  "members": [
+    "028", "032", "044", "052", "068", "076", "084", "124", "152", "170",
+    "188", "192", "212", "214", "218", "222", "308", "320", "328", "332",
+    "340", "388", "484", "558", "591", "600", "604", "659", "662", "670",
+    "740", "780", "840", "858", "862"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "_schema": "org-membership/v2",
+  "_generated": "2026-05-10T00:00:00Z",
+  "_source": "hand-curated",
+  "_notes": [
+    "African Union membership includes 55 states. Western Sahara / Sahrawi Arab Democratic Republic is a full AU member but is not represented as a separate state in the atlas (it is shown as part of Morocco's claim in most TopoJSON datasets). This layer therefore lists the 54 internationally widely-recognized state members. Morocco rejoined the AU in 2017 after a 33-year absence."
+  ],
+  "id": "au",
+  "name": "African Union",
+  "shortName": "AU",
+  "founded": "2002",
+  "headquarters": "Addis Ababa, Ethiopia",
+  "mission": "Continental union of 55 African states, succeeding the Organisation of African Unity. Aims at deeper political and economic integration, conflict resolution, and a unified voice for Africa internationally.",
+  "websiteUrl": "https://au.int",
+  "wikipediaUrl": "https://en.wikipedia.org/wiki/African_Union",
+  "members": [
+    "012", "024", "072", "108", "120", "132", "140", "148", "174", "178",
+    "180", "204", "226", "231", "232", "262", "266", "270", "288", "324",
+    "384", "404", "426", "430", "434", "450", "454", "466", "478", "480",
+    "504", "508", "516", "562", "566", "624", "646", "678", "686", "690",
+    "694", "706", "710", "716", "728", "729", "748", "768", "788", "800",
+    "834", "854", "894", "818"
+  ]
+}

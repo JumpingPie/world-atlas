@@ -1,0 +1,24 @@
+{
+  "_schema": "org-membership/v2",
+  "_generated": "2026-05-10T00:00:00Z",
+  "_source": "hand-curated",
+  "_notes": [
+    "Commonwealth of Nations membership as of May 2026: 56 states. Gabon and Togo joined in June 2022, the first members without a historical constitutional link to the United Kingdom. Charles III is Head of the Commonwealth."
+  ],
+  "id": "commonwealth",
+  "name": "Commonwealth of Nations",
+  "shortName": "Commonwealth",
+  "founded": "1949",
+  "headquarters": "London, United Kingdom",
+  "mission": "Political association of 56 mostly-former-British-colony states, plus more recent accessions. Cooperation on democracy, human rights, the rule of law, economic development, and the Commonwealth Games.",
+  "websiteUrl": "https://thecommonwealth.org",
+  "wikipediaUrl": "https://en.wikipedia.org/wiki/Commonwealth_of_Nations",
+  "members": [
+    "028", "036", "044", "050", "052", "072", "084", "096", "120", "124",
+    "196", "212", "242", "266", "270", "288", "308", "328", "356", "388",
+    "404", "296", "426", "454", "458", "462", "470", "480", "508", "516",
+    "520", "554", "566", "586", "598", "646", "659", "662", "670", "690",
+    "694", "702", "090", "710", "144", "834", "768", "776", "780", "798",
+    "800", "826", "548", "748", "882", "894"
+  ]
+}

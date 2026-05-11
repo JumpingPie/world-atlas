@@ -1,0 +1,17 @@
+{
+  "_schema": "org-membership/v2",
+  "_generated": "2026-05-10T00:00:00Z",
+  "_source": "hand-curated",
+  "_notes": [
+    "Shanghai Cooperation Organisation full members as of May 2026: 10 states. China and Russia are the founding heavyweights; India and Pakistan joined 2017, Iran 2023, Belarus 2024. Observers and dialogue partners (Afghanistan, Mongolia, Egypt, Qatar, etc.) are NOT included — only full members."
+  ],
+  "id": "sco",
+  "name": "Shanghai Cooperation Organisation",
+  "shortName": "SCO",
+  "founded": "2001",
+  "headquarters": "Beijing, China",
+  "mission": "Eurasian political, economic, and security organization spanning roughly 60% of Eurasia's landmass and 40% of the world's population. Focus on regional stability, anti-terrorism, and economic cooperation.",
+  "websiteUrl": "https://eng.sectsco.org",
+  "wikipediaUrl": "https://en.wikipedia.org/wiki/Shanghai_Cooperation_Organisation",
+  "members": ["112", "156", "356", "364", "398", "417", "586", "643", "762", "860"]
+}

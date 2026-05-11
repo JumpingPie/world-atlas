@@ -1,0 +1,20 @@
+{
+  "_schema": "org-membership/v2",
+  "_generated": "2026-05-10T00:00:00Z",
+  "_source": "hand-curated",
+  "_notes": [
+    "G20 members: 19 nation states plus the European Union and the African Union. The two regional unions are not state-level features and so don't appear in this list. South Korea is the 19th state member."
+  ],
+  "id": "g20",
+  "name": "Group of Twenty",
+  "shortName": "G20",
+  "founded": "1999",
+  "headquarters": "Rotating presidency (no fixed seat)",
+  "mission": "Forum of 19 major economies plus the EU and the AU, accounting for ~85% of global GDP. Coordinates on international financial stability, trade, climate, and crisis response.",
+  "websiteUrl": null,
+  "wikipediaUrl": "https://en.wikipedia.org/wiki/G20",
+  "members": [
+    "032", "036", "076", "124", "156", "250", "276", "356", "360", "380",
+    "392", "410", "484", "643", "682", "710", "792", "826", "840"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "_schema": "org-membership/v2",
+  "_generated": "2026-05-10T00:00:00Z",
+  "_source": "hand-curated",
+  "_notes": [
+    "League of Arab States membership: 22 member states. Syria was suspended in 2011 and readmitted in May 2023. Palestine has been a full member since 1976 and is included; the atlas treats Palestine as a sovereign state under the border policy."
+  ],
+  "id": "arab-league",
+  "name": "League of Arab States",
+  "shortName": "Arab League",
+  "founded": "1945",
+  "headquarters": "Cairo, Egypt",
+  "mission": "Regional organization of 22 Arab states across the Middle East and North Africa, coordinating on political, economic, cultural, and security issues. The oldest major regional intergovernmental organization in the Arab world.",
+  "websiteUrl": "https://www.lasportal.org",
+  "wikipediaUrl": "https://en.wikipedia.org/wiki/Arab_League",
+  "members": [
+    "012", "048", "174", "262", "275", "368", "400", "414", "422", "434",
+    "478", "504", "512", "634", "682", "706", "729", "760", "788", "784",
+    "818", "887"
+  ]
+}

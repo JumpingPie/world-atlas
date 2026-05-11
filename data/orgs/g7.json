@@ -1,0 +1,17 @@
+{
+  "_schema": "org-membership/v2",
+  "_generated": "2026-05-10T00:00:00Z",
+  "_source": "hand-curated",
+  "_notes": [
+    "G7 members: 7 major advanced economies. The European Union also participates as a non-enumerated member but isn't a state and so isn't represented as a country highlight here. Russia was suspended from the then-G8 in 2014 and the group reverted to G7."
+  ],
+  "id": "g7",
+  "name": "Group of Seven",
+  "shortName": "G7",
+  "founded": "1975",
+  "headquarters": "Rotating presidency (no fixed seat)",
+  "mission": "Forum of seven major advanced economies — Canada, France, Germany, Italy, Japan, the United Kingdom, and the United States — coordinating on global economic governance, security, and shared political values.",
+  "websiteUrl": null,
+  "wikipediaUrl": "https://en.wikipedia.org/wiki/G7",
+  "members": ["124", "250", "276", "380", "392", "826", "840"]
+}

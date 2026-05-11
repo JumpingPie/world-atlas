@@ -1,0 +1,17 @@
+{
+  "_schema": "org-membership/v2",
+  "_generated": "2026-05-10T00:00:00Z",
+  "_source": "hand-curated",
+  "_notes": [
+    "Mercosur full members as of May 2026: 5 South American states. Bolivia became a full member in 2024 (after acceding in 2023). Venezuela was suspended in 2016 and is NOT included here. Associate members (Chile, Colombia, Ecuador, Guyana, Peru, Suriname) are NOT included — only full members."
+  ],
+  "id": "mercosur",
+  "name": "Southern Common Market",
+  "shortName": "Mercosur",
+  "founded": "1991",
+  "headquarters": "Montevideo, Uruguay",
+  "mission": "South American trade bloc establishing a customs union and common market among its full members, with the broader goal of regional economic integration.",
+  "websiteUrl": "https://www.mercosur.int",
+  "wikipediaUrl": "https://en.wikipedia.org/wiki/Mercosur",
+  "members": ["032", "068", "076", "600", "858"]
+}

@@ -1,0 +1,20 @@
+{
+  "_schema": "org-membership/v2",
+  "_generated": "2026-05-10T00:00:00Z",
+  "_source": "hand-curated",
+  "_notes": [
+    "OPEC membership as of May 2026: 12 member states. Angola left at the end of 2023; Qatar left in 2019; Ecuador left in 2020; Indonesia suspended in 2016. The wider OPEC+ alliance (which includes Russia, Mexico, Kazakhstan and others) is a coordination forum, not OPEC membership, and is not included here."
+  ],
+  "id": "opec",
+  "name": "Organization of the Petroleum Exporting Countries",
+  "shortName": "OPEC",
+  "founded": "1960",
+  "headquarters": "Vienna, Austria",
+  "mission": "Cartel of major oil-producing states coordinating petroleum policy, particularly production quotas and pricing. Members control roughly 30% of world oil supply and 70% of proven reserves.",
+  "websiteUrl": "https://www.opec.org",
+  "wikipediaUrl": "https://en.wikipedia.org/wiki/OPEC",
+  "members": [
+    "012", "178", "226", "266", "364", "368", "414", "434", "566",
+    "634", "682", "784", "862"
+  ]
+}

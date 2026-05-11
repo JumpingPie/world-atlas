@@ -1,0 +1,20 @@
+{
+  "_schema": "org-membership/v2",
+  "_generated": "2026-05-10T00:00:00Z",
+  "_source": "hand-curated",
+  "_notes": [
+    "APEC members: 21 'economies' (the term APEC uses to accommodate Hong Kong and Chinese Taipei as members alongside sovereign states). Hong Kong is not a sovereign state and is not represented in this state-level membership list. Chinese Taipei (Taiwan, ISO 158) is included — APEC is the most prominent international forum where Taiwan participates as a full member."
+  ],
+  "id": "apec",
+  "name": "Asia-Pacific Economic Cooperation",
+  "shortName": "APEC",
+  "founded": "1989",
+  "headquarters": "Singapore",
+  "mission": "Inter-governmental forum of 21 Pacific Rim economies, promoting free trade and economic cooperation throughout the Asia-Pacific. Includes major economies on all sides of the Pacific.",
+  "websiteUrl": "https://www.apec.org",
+  "wikipediaUrl": "https://en.wikipedia.org/wiki/Asia-Pacific_Economic_Cooperation",
+  "members": [
+    "036", "096", "124", "152", "156", "158", "360", "392", "410", "458",
+    "484", "554", "598", "604", "608", "643", "702", "704", "764", "840"
+  ]
+}

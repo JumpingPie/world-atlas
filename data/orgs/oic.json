@@ -1,0 +1,24 @@
+{
+  "_schema": "org-membership/v2",
+  "_generated": "2026-05-10T00:00:00Z",
+  "_source": "hand-curated",
+  "_notes": [
+    "Organisation of Islamic Cooperation membership: 57 states across four continents, representing roughly 1.9 billion people. Includes Palestine (treated as a sovereign state under the atlas's border policy) and a small number of states with sizeable Muslim minorities (Guyana, Suriname) rather than majorities."
+  ],
+  "id": "oic",
+  "name": "Organisation of Islamic Cooperation",
+  "shortName": "OIC",
+  "founded": "1969",
+  "headquarters": "Jeddah, Saudi Arabia",
+  "mission": "International organization of 57 Muslim-majority and Muslim-population states. Coordinates political, economic, social, and cultural cooperation among members and represents collective Muslim interests internationally.",
+  "websiteUrl": "https://www.oic-oci.org",
+  "wikipediaUrl": "https://en.wikipedia.org/wiki/Organisation_of_Islamic_Cooperation",
+  "members": [
+    "004", "008", "012", "031", "048", "050", "204", "096", "854", "120",
+    "148", "174", "262", "266", "270", "324", "624", "328", "360", "364",
+    "368", "400", "398", "414", "417", "422", "434", "458", "462", "466",
+    "478", "504", "508", "562", "566", "512", "586", "275", "634", "682",
+    "686", "694", "706", "729", "740", "760", "762", "768", "788", "792",
+    "795", "800", "784", "860", "887", "384", "818"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "_schema": "org-membership/v2",
+  "_generated": "2026-05-10T00:00:00Z",
+  "_source": "hand-curated",
+  "_notes": [
+    "OECD membership as of May 2026: 38 member states. Most recent accession: Costa Rica (May 2021), Colombia (April 2020), Latvia (2016), Lithuania (2018). Candidate countries (Argentina, Brazil, Bulgaria, Croatia, Peru, Romania) are NOT included — only full members."
+  ],
+  "id": "oecd",
+  "name": "Organisation for Economic Co-operation and Development",
+  "shortName": "OECD",
+  "founded": "1961",
+  "headquarters": "Paris, France",
+  "mission": "Intergovernmental economic organisation of mostly high-income democracies, promoting policies to improve economic and social well-being. Conducts statistical research and sets international economic norms.",
+  "websiteUrl": "https://www.oecd.org",
+  "wikipediaUrl": "https://en.wikipedia.org/wiki/OECD",
+  "members": [
+    "036", "040", "056", "124", "152", "170", "188", "203", "208", "233",
+    "246", "250", "276", "300", "348", "352", "372", "376", "380", "392",
+    "410", "428", "440", "442", "484", "528", "554", "578", "616", "620",
+    "703", "705", "724", "752", "756", "792", "826", "840"
+  ]
+}

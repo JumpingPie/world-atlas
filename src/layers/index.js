@@ -28,6 +28,46 @@ import natoLayer from "./nato.js";
 import euLayer from "./eu.js";
 import bricsLayer from "./brics.js";
 
-const layers = [natoLayer, euLayer, bricsLayer];
+// 2026-05-10 batch of additional IGOs. Grouping the imports by
+// category here mirrors how they appear in the panel; the actual
+// section sort lives in src/core/layer-controls.js's CATEGORY_ORDER.
+import unLayer from "./un.js";
+import aukusLayer from "./aukus.js";
+import fiveEyesLayer from "./five-eyes.js";
+import scoLayer from "./sco.js";
+import g7Layer from "./g7.js";
+import g20Layer from "./g20.js";
+import oecdLayer from "./oecd.js";
+import opecLayer from "./opec.js";
+import aseanLayer from "./asean.js";
+import mercosurLayer from "./mercosur.js";
+import apecLayer from "./apec.js";
+import auLayer from "./au.js";
+import oasLayer from "./oas.js";
+import arabLeagueLayer from "./arab-league.js";
+import oicLayer from "./oic.js";
+import commonwealthLayer from "./commonwealth.js";
+
+const layers = [
+  unLayer,
+  natoLayer,
+  aukusLayer,
+  fiveEyesLayer,
+  scoLayer,
+  euLayer,
+  g7Layer,
+  g20Layer,
+  oecdLayer,
+  opecLayer,
+  bricsLayer,
+  aseanLayer,
+  mercosurLayer,
+  apecLayer,
+  auLayer,
+  oasLayer,
+  arabLeagueLayer,
+  oicLayer,
+  commonwealthLayer,
+];
 
 export default layers;

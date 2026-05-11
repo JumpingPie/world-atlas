@@ -1,0 +1,19 @@
+{
+  "_schema": "org-membership/v2",
+  "_generated": "2026-05-10T00:00:00Z",
+  "_source": "hand-curated",
+  "_notes": [
+    "ASEAN full members as of May 2026: 10 Southeast Asian states. Timor-Leste was accepted in principle in 2022 and is on a roadmap to full membership but has not yet formally joined; it is NOT included here."
+  ],
+  "id": "asean",
+  "name": "Association of Southeast Asian Nations",
+  "shortName": "ASEAN",
+  "founded": "1967",
+  "headquarters": "Jakarta, Indonesia",
+  "mission": "Regional intergovernmental organization of ten Southeast Asian states, fostering economic integration, political dialogue, security cooperation, and cultural exchange in the region.",
+  "websiteUrl": "https://asean.org",
+  "wikipediaUrl": "https://en.wikipedia.org/wiki/ASEAN",
+  "members": [
+    "096", "104", "116", "360", "418", "458", "608", "702", "704", "764"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "_schema": "org-membership/v2",
+  "_generated": "2026-05-10T00:00:00Z",
+  "_source": "hand-curated",
+  "_notes": [
+    "Five Eyes (FVEY) members: Australia, Canada, New Zealand, United Kingdom, United States. Originates from the UKUSA Agreement (1946) and expanded through the postwar period."
+  ],
+  "id": "five-eyes",
+  "name": "Five Eyes",
+  "shortName": "FVEY",
+  "founded": "1946",
+  "headquarters": "No central seat (intelligence-sharing alliance)",
+  "mission": "Anglosphere signals-intelligence and broader intelligence-sharing alliance. The five member states coordinate collection and exchange of intercepted communications and other intelligence products under common protocols.",
+  "websiteUrl": null,
+  "wikipediaUrl": "https://en.wikipedia.org/wiki/Five_Eyes",
+  "members": ["036", "124", "554", "826", "840"]
+}
