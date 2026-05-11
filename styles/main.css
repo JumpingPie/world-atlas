@@ -681,6 +681,154 @@ body {
   text-decoration: underline;
 }
 
+/* ---------- IGO sigils ----------
+ *
+ * Hand-curated medallions for a select group of intergovernmental
+ * organizations, drawn at `sigilPosition` coords in international
+ * waters near each org's HQ (or at a symbolic location for orgs
+ * without a fixed seat). Visible only at the world-view zoom tier;
+ * clicking one opens the .map-igo-popover with the org's metadata.
+ *
+ * Hardcoded warm-brown ink + cream parchment so the sigils carry the
+ * same Renaissance-map character regardless of which theme is on
+ * underneath. */
+.map-igo-sigils {
+  display: none;
+}
+
+.world-map.zoom-tier-1 .map-igo-sigils {
+  display: block;
+}
+
+.igo-sigil {
+  cursor: pointer;
+}
+
+.igo-sigil-disc {
+  fill: #f2eadc;
+  stroke: #3d2f20;
+  stroke-width: 1.4;
+  /* non-scaling-stroke keeps the medallion outline crisp at any zoom
+   * level; the sigils themselves only show at tier 1 (where k=1) so
+   * this is mostly defensive for the moment the tier changes mid-
+   * gesture. */
+  vector-effect: non-scaling-stroke;
+  transition: fill 100ms ease, stroke-width 100ms ease;
+}
+
+.igo-sigil:hover .igo-sigil-disc {
+  fill: #f8efd9;
+  stroke-width: 2;
+}
+
+.igo-sigil-label {
+  text-anchor: middle;
+  dominant-baseline: central;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 600;
+  font-size: 9px;
+  fill: #3d2f20;
+  pointer-events: none;
+  letter-spacing: 0.4px;
+}
+
+/* Popover that opens when a sigil is clicked. Positioned via JS,
+ * anchored to the right of the clicked sigil (or to the left if
+ * right would overflow). Parchment palette identical to the news
+ * dropdown so the two click-to-open surfaces feel like siblings. */
+.map-igo-popover {
+  position: absolute;
+  z-index: 6;
+  background: #f2eadc;
+  border: 1.2px solid #3d2f20;
+  border-radius: 4px;
+  box-shadow: 0 4px 14px rgba(60, 40, 15, 0.22);
+  color: #3d2f20;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 13px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.map-igo-popover[hidden] {
+  display: none;
+}
+
+/* When the map isn't at world view, sigils are display:none and any
+ * popover the user opened previously is meaningless — hide it too,
+ * since its screen anchor is gone. */
+#map-container .world-map:not(.zoom-tier-1) ~ .map-igo-popover {
+  display: none;
+}
+
+.map-igo-popover-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 10px 12px 8px;
+  border-bottom: 1px dashed rgba(61, 47, 32, 0.4);
+  gap: 10px;
+}
+
+.map-igo-popover-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #3d2f20;
+}
+
+.map-igo-popover-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  line-height: 1;
+  color: #3d2f20;
+  cursor: pointer;
+  padding: 0 4px;
+  margin: -2px -4px 0 0;
+}
+
+.map-igo-popover-close:hover {
+  color: #b03a2e;
+}
+
+.map-igo-popover-body {
+  padding: 10px 12px 12px;
+}
+
+/* Scope-overrides for the shared info-card classes that renderInfoCard
+ * emits. The defaults read theme tokens (var(--color-text)), but the
+ * popover's parchment background is fixed regardless of theme — so
+ * we pin its text colors here instead of inheriting. */
+.map-igo-popover-body .layer-info-mission {
+  color: #3d2f20;
+  font-size: 13px;
+  margin: 0 0 0.55rem;
+}
+.map-igo-popover-body .layer-info-stats dt {
+  color: rgba(61, 47, 32, 0.65);
+}
+.map-igo-popover-body .layer-info-stats dd {
+  color: #3d2f20;
+}
+.map-igo-popover-body .layer-info-links {
+  border-top-color: rgba(61, 47, 32, 0.4);
+}
+.map-igo-popover-body .layer-info-links a {
+  color: #1a5a30;
+  border-color: rgba(61, 47, 32, 0.4);
+  background: rgba(61, 47, 32, 0.03);
+}
+.map-igo-popover-body .layer-info-links a:hover {
+  background: rgba(61, 47, 32, 0.1);
+  border-color: rgba(61, 47, 32, 0.7);
+}
+.map-igo-popover-body .layer-info-loading,
+.map-igo-popover-body .layer-info-error {
+  color: rgba(61, 47, 32, 0.65);
+}
+
 /* ---------- Side and bottom panels ----------
  *
  * All three panels (left, right, bottom) live as flex siblings in

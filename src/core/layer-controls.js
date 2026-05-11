@@ -254,7 +254,13 @@ function renderInfoError(card, message) {
   card.appendChild(p);
 }
 
-function renderInfoCard(card, data) {
+/**
+ * Populate an empty container with an org's info: mission, key
+ * stats, outbound links. Exported so the IGO sigil popover can reuse
+ * the same rendering against the same JSON shape. Mutates `card` in
+ * place; doesn't manage open/close.
+ */
+export function renderInfoCard(card, data) {
   card.replaceChildren();
 
   if (data.mission) {

@@ -13,6 +13,7 @@
   "mission": "Forum of 19 major economies plus the EU and the AU, accounting for ~85% of global GDP. Coordinates on international financial stability, trade, climate, and crisis response.",
   "websiteUrl": null,
   "wikipediaUrl": "https://en.wikipedia.org/wiki/G20",
+  "sigilPosition": [65, 13],
   "members": [
     "032", "036", "076", "124", "156", "250", "276", "356", "360", "380",
     "392", "410", "484", "643", "682", "710", "792", "826", "840"

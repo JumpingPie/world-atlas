@@ -51,18 +51,25 @@ Sections 1-8 of the original build plan, in the order they shipped:
   row carries the Wikipedia topic link (from the parent bullet) and
   the external news-source link (Reuters/BBC/etc.) as separate
   click targets. Multi-day fetch cached per day in localStorage.
+- **IGO layer batch + info popovers** — the membership-layer pattern
+  extended from NATO/EU/BRICS to a full set of 18 IGOs (UN, AUKUS,
+  Five Eyes, SCO, G7, G20, OECD, OPEC, ASEAN, Mercosur, APEC, AU,
+  OAS, Arab League, OIC, Commonwealth, plus the original three).
+  Layer panel grows two new category sections ("Universal", "Regional
+  intergovernmental"). Each layer toggle has a sibling info button
+  that expands an inline card with the org's mission, founding year,
+  headquarters, member count, and links to the official site and
+  Wikipedia article. Org JSON schema bumped to v2 with the new
+  metadata fields.
 
 ## In progress
 
-**More IGOs in the layer system, with info popovers.** Expanding the
-existing membership-layer pattern (NATO/EU/BRICS) to cover the major
-intergovernmental orgs. Each org gets one JSON data file under
-`data/orgs/` and a ~5-line module file under `src/layers/`. The layer
-panel grows a small info button on each row that opens an
-organization detail card (mission, founding year, members, link out).
-Once this batch is in, we'll look at which orgs deserve to be
-promoted to first-class clickable sigils on the map (the deferred
-"IGOs as first-class entities" work).
+**IGOs as first-class entities on the map.** A subset of the layer-
+system orgs gets a clickable sigil placed in international waters
+near its headquartered state. Sigils visible only at the world-view
+zoom tier (to keep the map readable at country zoom); click opens a
+popover with the same metadata as the layer info card. Orgs without
+a fixed HQ (BRICS, G7, G20, AUKUS, Five Eyes) stay layer-only.
 
 ## Up next
 

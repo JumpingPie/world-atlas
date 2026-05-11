@@ -209,6 +209,15 @@
           </button>
 
           <!--
+            IGO sigil popover. A single floating panel inside
+            #map-container that opens when the user clicks one of the
+            sigils drawn into the map at world-view zoom. Positioned
+            by src/core/igo-sigils.js at click time; its content is
+            populated by reusing renderInfoCard from layer-controls.
+          -->
+          <div class="map-igo-popover" hidden></div>
+
+          <!--
             Theme toggle. Floats in the top-right corner of the map
             area. Label set at startup (and updated on click) to show
             the *next* theme — reads as a verb ("Atlas" = "switch to
@@ -280,6 +289,7 @@
       import { initLayerControls } from "./src/core/layer-controls.js";
       import { initBottomPanel } from "./src/core/bottom-panel.js";
       import { initTitleNews } from "./src/core/title-news.js";
+      import { initIgoSigils } from "./src/core/igo-sigils.js";
 
       const container = document.getElementById("map-container");
       const panelContainer = document.getElementById("country-panel");
@@ -418,6 +428,15 @@
         // strictly about what's *inside* it.
         initBottomPanel(
           document.querySelector("#bottom-panel .bottom-panel-content")
+        );
+
+        // IGO sigils — hand-curated medallions on the world-view
+        // map for the major intergovernmental organizations.
+        // Fire-and-forget: silently does nothing if the org JSONs
+        // can't load.
+        initIgoSigils(
+          mapHandle,
+          container.querySelector(".map-igo-popover")
         );
 
         // Loading message removal happens after init resolves so users

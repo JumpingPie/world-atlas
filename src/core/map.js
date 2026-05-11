@@ -478,6 +478,26 @@ export async function initMap(container) {
       overlaysGroup.select(`g[data-overlay-id="${id}"]`).remove();
     },
 
+    /**
+     * Add a persistent top-level overlay group, OUTSIDE the regular
+     * `.map-overlays` container. Use this when an overlay needs its
+     * own visibility rules (e.g. IGO sigils, which are visible only at
+     * world view, where the regular overlays are hidden) — they need
+     * to be a sibling of `.map-overlays` rather than a child of it.
+     *
+     * The group is appended to the root, so it's still subject to the
+     * zoom transform. Idempotent: a second call with the same
+     * className replaces the previous group.
+     *
+     * @param {string} className - CSS class for the group; CSS targets
+     *     this for visibility/styling rules.
+     * @returns {d3.Selection}
+     */
+    addPersistentOverlay(className) {
+      root.select(`g.${className}`).remove();
+      return root.append("g").attr("class", className);
+    },
+
     /** Active geographic projection. Layers should reuse this. */
     getProjection() {
       return projection;

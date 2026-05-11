@@ -13,5 +13,6 @@
   "mission": "Anglosphere signals-intelligence and broader intelligence-sharing alliance. The five member states coordinate collection and exchange of intercepted communications and other intelligence products under common protocols.",
   "websiteUrl": null,
   "wikipediaUrl": "https://en.wikipedia.org/wiki/Five_Eyes",
+  "sigilPosition": [-40, 45],
   "members": ["036", "124", "554", "826", "840"]
 }

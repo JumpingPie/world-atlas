@@ -14,6 +14,7 @@
   "mission": "Intergovernmental organization for international cooperation on peace and security, human rights, humanitarian aid, sustainable development, and international law. 193 member states.",
   "websiteUrl": "https://www.un.org",
   "wikipediaUrl": "https://en.wikipedia.org/wiki/United_Nations",
+  "sigilPosition": [-72, 40],
   "members": [
     "004", "008", "012", "020", "024", "028", "031", "032", "036", "040",
     "044", "048", "050", "051", "052", "056", "064", "068", "070", "072",
