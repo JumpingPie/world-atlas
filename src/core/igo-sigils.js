@@ -81,9 +81,14 @@ export async function initIgoSigils(mapHandle, popoverContainer) {
   // through the shared data-cache, so an org whose layer is already
   // rendered has already populated its entry — these resolve
   // synchronously from cache in that case.
+  //
+  // Cache key includes a schema-version suffix so older cached
+  // entries (from before sigilPosition existed on the org JSON
+  // shape) get bypassed on the next load instead of feeding a
+  // stale, sigilPosition-less object into the filter below.
   const orgs = await Promise.all(
     SIGIL_IDS.map((id) =>
-      getOrFetch(`layer-data:${id}`, TTL_MS, async () => {
+      getOrFetch(`org-data/v2:${id}`, TTL_MS, async () => {
         const res = await fetch(`data/orgs/${id}.json`);
         if (!res.ok) {
           throw new Error(`org json fetch failed for ${id}: ${res.status}`);
@@ -100,6 +105,16 @@ export async function initIgoSigils(mapHandle, popoverContainer) {
     (o) => o && Array.isArray(o.sigilPosition) && o.sigilPosition.length === 2
   );
 
+  console.info(
+    `[igo-sigils] loaded ${usable.length}/${SIGIL_IDS.length} orgs with sigilPosition`
+  );
+  if (usable.length === 0) {
+    console.warn(
+      "[igo-sigils] no orgs had a usable sigilPosition; rendering nothing"
+    );
+    return;
+  }
+
   drawSigils(mapHandle, usable);
   bindGlobalCloseHandlers();
 }
@@ -107,10 +122,16 @@ export async function initIgoSigils(mapHandle, popoverContainer) {
 function drawSigils(mapHandle, orgs) {
   const projection = mapHandle.getProjection();
   const group = mapHandle.addPersistentOverlay("map-igo-sigils");
+  let drawn = 0;
 
   for (const org of orgs) {
     const projected = projection(org.sigilPosition);
-    if (!projected || !Number.isFinite(projected[0])) continue;
+    if (!projected || !Number.isFinite(projected[0])) {
+      console.warn(
+        `[igo-sigils] could not project ${org.id} @ ${org.sigilPosition}`
+      );
+      continue;
+    }
     const [x, y] = projected;
 
     const sigil = group
@@ -118,22 +139,253 @@ function drawSigils(mapHandle, orgs) {
       .attr("class", "igo-sigil")
       .attr("data-org-id", org.id)
       .attr("transform", `translate(${x}, ${y})`);
+    drawn += 1;
 
     sigil
       .append("circle")
       .attr("class", "igo-sigil-disc")
       .attr("r", SIGIL_RADIUS);
 
-    sigil
-      .append("text")
-      .attr("class", "igo-sigil-label")
-      .text(org.shortName || org.id.toUpperCase());
+    // Per-org symbolic glyph inside the disc. Drawn in the same
+    // dark-brown ink as the rest of the map so the sigils read as
+    // engraved marks rather than pasted-on logos. See appendIcon
+    // for the per-org shapes.
+    appendIcon(sigil, org.id);
 
     sigil.on("click", (event) => {
       event.stopPropagation();
       openPopover(sigil.node(), org);
     });
   }
+
+  console.info(`[igo-sigils] drew ${drawn} sigils into the map`);
+}
+
+/**
+ * Append a per-org symbolic glyph inside the sigil disc. Each glyph
+ * is a tiny, low-detail mark chosen to read at the 16-radius disc
+ * size without descending into illegible logo-miniaturization. The
+ * design intent is "ink mark on a parchment map," not "company
+ * logo," so everything stays in the same dark-brown stroke as the
+ * map's country borders.
+ *
+ * For orgs whose visual identity *is* a letter mark (G7, G20),
+ * typography is the right answer; everything else gets a glyph.
+ *
+ * Adding a new org's icon: extend the switch with another case.
+ */
+function appendIcon(sigil, orgId) {
+  const ink = "#3d2f20";
+
+  switch (orgId) {
+    case "un": {
+      // Olive wreath: two curved arcs framing the disc, with small
+      // leaf-dots along each. Evokes the UN flag without trying to
+      // render its polar-projection globe at 30px.
+      sigil
+        .append("path")
+        .attr("d", "M-9,-2 Q-11,-7 -7,-9 Q-3,-10 0,-8")
+        .attr("stroke-width", 1.2)
+        .attr("stroke-linecap", "round")
+        .attr("fill", "none")
+        .attr("stroke", ink);
+      sigil
+        .append("path")
+        .attr("d", "M9,-2 Q11,-7 7,-9 Q3,-10 0,-8")
+        .attr("stroke-width", 1.2)
+        .attr("stroke-linecap", "round")
+        .attr("fill", "none")
+        .attr("stroke", ink);
+      sigil
+        .append("path")
+        .attr("d", "M-6,4 Q0,10 6,4")
+        .attr("stroke-width", 1)
+        .attr("stroke-linecap", "round")
+        .attr("fill", "none")
+        .attr("stroke", ink);
+      for (const [cx, cy] of [
+        [-7, -5], [-3, -7.5], [3, -7.5], [7, -5],
+        [-3, 5], [3, 5],
+      ]) {
+        sigil
+          .append("circle")
+          .attr("cx", cx)
+          .attr("cy", cy)
+          .attr("r", 0.8)
+          .attr("fill", ink);
+      }
+      return;
+    }
+
+    case "eu": {
+      // Ring of 12 small stars (well — small dots) at the points
+      // of a clock face, mirroring the EU flag's 12-star ring.
+      for (let i = 0; i < 12; i++) {
+        const angle = (i * 30 - 90) * (Math.PI / 180);
+        const r = 8.5;
+        sigil
+          .append("circle")
+          .attr("cx", Math.cos(angle) * r)
+          .attr("cy", Math.sin(angle) * r)
+          .attr("r", 1.3)
+          .attr("fill", ink);
+      }
+      return;
+    }
+
+    case "five-eyes": {
+      // A single eye: almond outline with a filled pupil.
+      sigil
+        .append("path")
+        .attr("d", "M-10,0 Q0,-6 10,0 Q0,6 -10,0 Z")
+        .attr("stroke-width", 1.2)
+        .attr("stroke-linejoin", "round")
+        .attr("fill", "none")
+        .attr("stroke", ink);
+      sigil
+        .append("circle")
+        .attr("cx", 0)
+        .attr("cy", 0)
+        .attr("r", 2.4)
+        .attr("fill", ink);
+      return;
+    }
+
+    case "g7": {
+      sigil
+        .append("text")
+        .attr("class", "igo-sigil-glyph")
+        .attr("font-size", "18px")
+        .text("7");
+      return;
+    }
+
+    case "g20": {
+      sigil
+        .append("text")
+        .attr("class", "igo-sigil-glyph")
+        .attr("font-size", "14px")
+        .text("20");
+      return;
+    }
+
+    case "brics": {
+      // Filled 5-pointed star. Path is a single moveto + 10 linetos
+      // for the alternating outer/inner star vertices.
+      sigil
+        .append("path")
+        .attr(
+          "d",
+          starPath(0, 0, 9, 3.7, 5)
+        )
+        .attr("fill", ink);
+      return;
+    }
+
+    case "oic": {
+      // Crescent. Outer circle minus inner offset circle, drawn as
+      // a single path with two arc commands.
+      sigil
+        .append("path")
+        .attr(
+          "d",
+          "M3,-8 A8,8 0 1,0 3,8 A6,6 0 1,1 3,-8 Z"
+        )
+        .attr("fill", ink);
+      return;
+    }
+
+    case "arab-league": {
+      // Crescent (slimmer than OIC's) plus a small 5-point star to
+      // the right — distinguishes from OIC at a glance while staying
+      // visually consistent with Arab-world flag iconography.
+      sigil
+        .append("path")
+        .attr(
+          "d",
+          "M1,-7 A7,7 0 1,0 1,7 A5.5,5.5 0 1,1 1,-7 Z"
+        )
+        .attr("fill", ink);
+      sigil
+        .append("path")
+        .attr("d", starPath(7, 0, 2.4, 1, 5))
+        .attr("fill", ink);
+      return;
+    }
+
+    case "sco": {
+      // Globe with vertical meridians — distinct from UN's olive-
+      // wreath glyph and signaling the org's Eurasian span.
+      sigil
+        .append("circle")
+        .attr("cx", 0)
+        .attr("cy", 0)
+        .attr("r", 7)
+        .attr("stroke-width", 1.2)
+        .attr("fill", "none")
+        .attr("stroke", ink);
+      sigil
+        .append("line")
+        .attr("x1", 0).attr("y1", -7)
+        .attr("x2", 0).attr("y2", 7)
+        .attr("stroke", ink)
+        .attr("stroke-width", 0.8);
+      sigil
+        .append("path")
+        .attr("d", "M-5,-5 Q0,-7 5,-5")
+        .attr("stroke-width", 0.7)
+        .attr("fill", "none")
+        .attr("stroke", ink);
+      sigil
+        .append("path")
+        .attr("d", "M-5,5 Q0,7 5,5")
+        .attr("stroke-width", 0.7)
+        .attr("fill", "none")
+        .attr("stroke", ink);
+      sigil
+        .append("path")
+        .attr("d", "M-7,0 Q-5,-3 -5,0 Q-5,3 -7,0")
+        .attr("stroke-width", 0.7)
+        .attr("fill", "none")
+        .attr("stroke", ink);
+      sigil
+        .append("path")
+        .attr("d", "M7,0 Q5,-3 5,0 Q5,3 7,0")
+        .attr("stroke-width", 0.7)
+        .attr("fill", "none")
+        .attr("stroke", ink);
+      return;
+    }
+
+    default: {
+      // Fallback for any org that doesn't have a glyph yet — use
+      // the short name as text. Same typography as G7/G20 so the
+      // sigil still reads as a unified element.
+      sigil
+        .append("text")
+        .attr("class", "igo-sigil-glyph")
+        .attr("font-size", "11px")
+        .text(orgId.toUpperCase().slice(0, 3));
+    }
+  }
+}
+
+/**
+ * SVG path data for an n-pointed star centered at (cx, cy) with
+ * given outer and inner radii. Used for BRICS (filled 5-pointed)
+ * and the small companion star in the Arab League glyph.
+ */
+function starPath(cx, cy, outerR, innerR, points) {
+  const step = Math.PI / points;
+  let path = "";
+  for (let i = 0; i < points * 2; i++) {
+    const r = i % 2 === 0 ? outerR : innerR;
+    const angle = i * step - Math.PI / 2;
+    const x = cx + Math.cos(angle) * r;
+    const y = cy + Math.sin(angle) * r;
+    path += (i === 0 ? "M" : "L") + x.toFixed(2) + "," + y.toFixed(2);
+  }
+  return path + "Z";
 }
 
 function openPopover(sigilNode, org) {

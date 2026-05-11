@@ -220,7 +220,7 @@ async function toggleInfoCard(layer, btn, card) {
     // (and toggling the layer on after opening the info card is
     // similarly instant).
     const data = await getOrFetch(
-      `layer-data:${layer.id}`,
+      `org-data/v2:${layer.id}`,
       INFO_TTL_MS,
       async () => {
         const res = await fetch(layer.dataSource);
