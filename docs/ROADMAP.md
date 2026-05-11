@@ -41,25 +41,28 @@ Sections 1-8 of the original build plan, in the order they shipped:
   right corner.
 - **Robust HTTP layer** — in-flight request deduplication,
   exponential backoff on 429/503, per-attempt 15-second timeout.
+- **Title cartouche + news cycler** — a Renaissance-style SVG
+  cartouche floats centered near the top of the map; its inner
+  `<text>` cycles between "WORLD ATLAS" and headlines parsed from
+  Wikipedia's Current Events portal, with a flicker-out / smooth-
+  fade-in transition. Long headlines wrap onto two lines via SVG
+  tspans. Clicking the cartouche opens a parchment-styled dropdown
+  listing recent headlines (today + previous two days, deduped); each
+  row carries the Wikipedia topic link (from the parent bullet) and
+  the external news-source link (Reuters/BBC/etc.) as separate
+  click targets. Multi-day fetch cached per day in localStorage.
 
 ## In progress
 
-**News banner integrated into the title.** v1 shipped: a Renaissance-
-style cartouche floats centered near the top of the map area;
-`src/core/title-news.js` cycles its inner SVG `<text>` between
-"WORLD ATLAS" and the day's Wikipedia Current Events headlines, with
-a flicker-on-out / smooth-fade-on-in transition. v1 click behavior is
-read-only — clicking a headline opens its source URL in a new tab.
-
-**Outstanding for this item:**
-
-- Tune the pacing constants (`TITLE_HOLD_MS`, `HEADLINE_HOLD_MS`,
-  `FADE_OUT_MS`, `FADE_IN_MS`) once we've watched it run for a while.
-- Decide whether to add map navigation on click — the "real unlock"
-  per `IDEAS.md`. Requires the fetcher to extract country ISO codes
-  from each portal bullet, which it doesn't yet do.
-- Optional: dynamic font sizing for headlines that don't fit at 14px
-  even after the 100-char truncation. Not needed yet.
+**More IGOs in the layer system, with info popovers.** Expanding the
+existing membership-layer pattern (NATO/EU/BRICS) to cover the major
+intergovernmental orgs. Each org gets one JSON data file under
+`data/orgs/` and a ~5-line module file under `src/layers/`. The layer
+panel grows a small info button on each row that opens an
+organization detail card (mission, founding year, members, link out).
+Once this batch is in, we'll look at which orgs deserve to be
+promoted to first-class clickable sigils on the map (the deferred
+"IGOs as first-class entities" work).
 
 ## Up next
 
@@ -68,35 +71,29 @@ Reorder freely as priorities shift.
 
 1. **IGOs as first-class entities.** Clickable sigils placed in
    international waters near each org's headquartered state (UN/NYC,
-   NATO/Brussels, etc.). Only the major orgs (UN, NATO, BRICS+, EU,
-   ASEAN, AU, OAS, …). Open questions: layer-toggleable vs. always-on
-   at world view; placement rule for orgs without a single HQ
-   (BRICS+). Unblocks #2.
+   NATO/Brussels, etc.). Selected from the layer-system pool above
+   on the basis of global weight. Open questions: layer-toggleable
+   vs. always-on at world view; placement rule for orgs without a
+   single HQ (BRICS+).
 
-2. **More IGOs in the layer system, with info popovers.** Major orgs
-   beyond NATO/EU/BRICS as toggleable membership layers, with a small
-   info button on each layer row that opens an organization detail
-   card (mission, founding year, members, link out). Reuses the IGO
-   entity data from #1.
-
-3. **Bilateral interactions / "scanner."** State↔state and state↔IGO
+2. **Bilateral interactions / "scanner."** State↔state and state↔IGO
    relations: economic partnerships, conflicts, sanctions, top trade
    partners. New panel card kind, fed by separate fetchers per
    relation type. Extends the existing card contract.
 
-4. **Loading-time pass.** Profile and shorten state-info and timeline
+3. **Loading-time pass.** Profile and shorten state-info and timeline
    load. Likely candidates: serial Wikidata→Wikipedia→history fetches
    (parallelize), timeline parsing on the main thread (move work,
    precompute, or cache), and aggressive caching of parsed timelines
    to JSON. Independent of feature work; can run alongside.
 
-5. **Conflict scanner.** Layer / mode that shows all ongoing
+4. **Conflict scanner.** Layer / mode that shows all ongoing
    conflicts and wars at once, with some indication of progression
    (intensifying, de-escalating, frozen). Data: ACLED for events,
    plus temporal aggregation per conflict zone for the trend signal.
-   May share a fetcher with #3's conflict relation.
+   May share a fetcher with #2's conflict relation.
 
-6. **More layer types — democracy rating and similar indices.**
+5. **More layer types — democracy rating and similar indices.**
    Choropleth-style layers based on per-country numeric scores
    (V-Dem, Freedom House, HDI, press freedom, etc.). Worth
    introducing a generic "choropleth layer" kind so each new index

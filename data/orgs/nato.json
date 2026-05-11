@@ -1,15 +1,20 @@
 {
-  "_schema": "org-membership/v1",
-  "_generated": "2026-05-04T00:00:00Z",
+  "_schema": "org-membership/v2",
+  "_generated": "2026-05-10T00:00:00Z",
   "_source": "hand-curated",
   "_notes": [
     "NATO membership as of May 2026: 32 member states. Sweden joined in March 2024 and Finland in April 2023, completing the post-2022 Nordic expansion. Members are ISO 3166-1 numeric codes (3-digit zero-padded) matching the world-atlas TopoJSON.",
+    "Schema v2 (2026-05-10): adds mission, headquarters, websiteUrl, wikipediaUrl for the layer-panel info popover. Older v1 files just had id/name/shortName/founded/members.",
     "Update procedure: edit the members list and bump _generated. No code changes required."
   ],
   "id": "nato",
   "name": "North Atlantic Treaty Organization",
   "shortName": "NATO",
   "founded": "1949",
+  "headquarters": "Brussels, Belgium",
+  "mission": "Mutual defense alliance providing collective security for member states across North America and Europe under Article 5: an attack on one is treated as an attack on all.",
+  "websiteUrl": "https://www.nato.int",
+  "wikipediaUrl": "https://en.wikipedia.org/wiki/NATO",
   "members": [
     "008", "056", "100", "124", "191", "203", "208", "233", "246",
     "250", "276", "300", "348", "352", "380", "428", "440", "442",

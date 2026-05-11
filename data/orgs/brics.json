@@ -1,6 +1,6 @@
 {
-  "_schema": "org-membership/v1",
-  "_generated": "2026-05-04T00:00:00Z",
+  "_schema": "org-membership/v2",
+  "_generated": "2026-05-10T00:00:00Z",
   "_source": "hand-curated",
   "_notes": [
     "BRICS membership as of May 2026: 10 member states.",
@@ -9,12 +9,17 @@
     "  - 2025 expansion: Indonesia joined 1 January 2025.",
     "  - Saudi Arabia was invited in 2023 but its full membership status remains unclear; not included.",
     "  - Argentina was invited in 2023 but withdrew before joining; not included.",
+    "Schema v2 (2026-05-10): adds mission, headquarters, websiteUrl, wikipediaUrl for the layer-panel info popover. BRICS has no fixed headquarters — leadership rotates annually among members.",
     "Update procedure: edit the members list and bump _generated."
   ],
   "id": "brics",
   "name": "BRICS",
   "shortName": "BRICS",
   "founded": "2009",
+  "headquarters": "Rotating presidency (no fixed seat)",
+  "mission": "Bloc of major emerging-economy states coordinating on trade, finance, and political alignment as a counterweight to Western-led institutions; operates the New Development Bank.",
+  "websiteUrl": null,
+  "wikipediaUrl": "https://en.wikipedia.org/wiki/BRICS",
   "members": [
     "076", "156", "231", "356", "360", "364", "643", "710", "784", "818"
   ]

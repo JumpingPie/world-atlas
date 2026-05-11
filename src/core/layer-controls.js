@@ -21,7 +21,13 @@
 // via the layer manager.
 
 import { setState, getState, on } from "./state.js";
+import { getOrFetch } from "./data-cache.js";
 import layers from "../layers/index.js";
+
+// Cache TTL for org info JSON when fetched on-demand from the
+// popover. Same 14-day window the layer manager uses for membership
+// data — the file is the same JSON, so the cache entry is shared. */
+const INFO_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 
 // Order in which layer categories appear in the panel. Categories
 // not in this list fall through to alphabetical at the end. Keeping
@@ -114,8 +120,11 @@ function makeCategoryCard(category, layersInCategory) {
 }
 
 /**
- * Build one toggle-button list item for a layer. The button carries
- * a data-layer-id attribute the sync function uses to find it.
+ * Build one toggle-button list item for a layer. The toggle button
+ * carries a data-layer-id attribute the sync function uses to find
+ * it. A sibling info button opens a collapsible card with the org's
+ * mission, headquarters, founding year, member count, and outbound
+ * links — lazy-loaded from the layer's dataSource JSON.
  */
 function makeLayerItem(layer) {
   const li = document.createElement("li");
@@ -144,7 +153,149 @@ function makeLayerItem(layer) {
   btn.addEventListener("click", () => toggleLayer(layer.id));
 
   li.appendChild(btn);
+
+  // Info button — separate from the toggle so clicking one doesn't
+  // accidentally fire the other. Italic lowercase "i" inside a
+  // small circle, sitting flush to the right of the toggle.
+  const infoBtn = document.createElement("button");
+  infoBtn.type = "button";
+  infoBtn.className = "layer-info-btn";
+  infoBtn.setAttribute("aria-label", `Information about ${layer.label}`);
+  infoBtn.setAttribute("aria-expanded", "false");
+  infoBtn.textContent = "i";
+
+  // Collapsible info card. Hidden by default; populated on first
+  // open via the org's JSON dataSource.
+  const card = document.createElement("div");
+  card.className = "layer-info-card";
+  card.hidden = true;
+
+  infoBtn.addEventListener("click", () =>
+    toggleInfoCard(layer, infoBtn, card)
+  );
+
+  li.appendChild(infoBtn);
+  li.appendChild(card);
+
   return li;
+}
+
+/**
+ * Open or close a layer's info card. Lazy-fetches the org's JSON the
+ * first time the card opens; subsequent opens reuse the populated
+ * DOM without refetching.
+ *
+ * Layers without a dataSource (none currently, but a forward-looking
+ * design) get a non-functional info card that just says no metadata
+ * is available — better than a silent broken button.
+ */
+async function toggleInfoCard(layer, btn, card) {
+  if (!card.hidden) {
+    card.hidden = true;
+    btn.classList.remove("is-active");
+    btn.setAttribute("aria-expanded", "false");
+    return;
+  }
+  card.hidden = false;
+  btn.classList.add("is-active");
+  btn.setAttribute("aria-expanded", "true");
+
+  if (card.dataset.populated === "true") return;
+  card.dataset.populated = "true";
+
+  if (!layer.dataSource) {
+    renderInfoError(card, "No organization metadata available.");
+    return;
+  }
+
+  renderInfoLoading(card);
+
+  try {
+    // Share the data-cache layer-manager uses, so opening the info
+    // card after the layer's already been rendered is instant
+    // (and toggling the layer on after opening the info card is
+    // similarly instant).
+    const data = await getOrFetch(
+      `layer-data:${layer.id}`,
+      INFO_TTL_MS,
+      async () => {
+        const res = await fetch(layer.dataSource);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      }
+    );
+    renderInfoCard(card, data);
+  } catch (err) {
+    console.warn(
+      `[layer-controls] info load failed for ${layer.id}:`,
+      err
+    );
+    renderInfoError(card, "Couldn’t load organization details.");
+  }
+}
+
+function renderInfoLoading(card) {
+  card.replaceChildren();
+  const p = document.createElement("p");
+  p.className = "layer-info-loading";
+  p.textContent = "Loading…";
+  card.appendChild(p);
+}
+
+function renderInfoError(card, message) {
+  card.replaceChildren();
+  const p = document.createElement("p");
+  p.className = "layer-info-error";
+  p.textContent = message;
+  card.appendChild(p);
+}
+
+function renderInfoCard(card, data) {
+  card.replaceChildren();
+
+  if (data.mission) {
+    const p = document.createElement("p");
+    p.className = "layer-info-mission";
+    p.textContent = data.mission;
+    card.appendChild(p);
+  }
+
+  const stats = document.createElement("dl");
+  stats.className = "layer-info-stats";
+
+  const addStat = (key, value) => {
+    if (value === null || value === undefined || value === "") return;
+    const dt = document.createElement("dt");
+    dt.textContent = key;
+    const dd = document.createElement("dd");
+    dd.textContent = value;
+    stats.appendChild(dt);
+    stats.appendChild(dd);
+  };
+
+  addStat("Founded", data.founded);
+  addStat("Headquarters", data.headquarters);
+  addStat(
+    "Members",
+    Array.isArray(data.members) ? `${data.members.length} states` : null
+  );
+
+  if (stats.children.length > 0) card.appendChild(stats);
+
+  const links = document.createElement("div");
+  links.className = "layer-info-links";
+  if (data.websiteUrl) links.appendChild(makeInfoLink(data.websiteUrl, "Official site"));
+  if (data.wikipediaUrl) links.appendChild(makeInfoLink(data.wikipediaUrl, "Wikipedia"));
+  if (links.children.length > 0) card.appendChild(links);
+}
+
+function makeInfoLink(href, label) {
+  const a = document.createElement("a");
+  a.href = href;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  a.textContent = label;
+  return a;
 }
 
 /**
