@@ -59,6 +59,23 @@ const TTL_MS = 14 * 24 * 60 * 60 * 1000;
 // size at zoom-tier-1 (k=1).
 const SIGIL_RADIUS = 16;
 
+// Per-org flag palette: disc fill + glyph color. Lifted (and slightly
+// simplified) from each org's actual flag where one exists; for orgs
+// without an official flag (Five Eyes, G7, G20, BRICS), the palette
+// is a stand-in chosen to read distinctively against the cream map
+// without colliding with another sigil's color.
+const ORG_PALETTE = {
+  un:            { disc: "#5b92cb", glyph: "#ffffff" },
+  eu:            { disc: "#003399", glyph: "#ffcc00" },
+  "five-eyes":   { disc: "#1a3a5e", glyph: "#ffffff" },
+  g7:            { disc: "#1c3d6b", glyph: "#ffffff" },
+  g20:           { disc: "#5e2a3a", glyph: "#ffffff" },
+  brics:         { disc: "#c0492a", glyph: "#ffffff" },
+  oic:           { disc: "#006233", glyph: "#ffffff" },
+  "arab-league": { disc: "#0a3d29", glyph: "#ffffff" },
+  sco:           { disc: "#1c5b5e", glyph: "#ffffff" },
+};
+
 let popoverEl = null;
 let mapHandleRef = null;
 let docClickHandler = null;
