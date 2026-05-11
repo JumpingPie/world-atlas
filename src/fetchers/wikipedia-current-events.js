@@ -128,78 +128,163 @@ function dateToISODate(date) {
 
 /**
  * Parse the HTML of a Current Events daily page into a flat list of
- * { headline, sourceUrl, category } records.
+ * { headline, sourceUrl, topicTitle, category, body } records.
  *
- * Strategy: walk every plausible event-bullet container — `<li>` and
- * `<dd>` — at any nesting level. For each container:
+ * Wikipedia's portal uses a two-tier bullet pattern per day:
  *
- *   1. Clone it and strip nested sub-lists from the clone, so the
- *      headline text reflects the bullet itself rather than its
- *      sub-bullets. (We don't skip nested bullets entirely, because
- *      Wikipedia's portal often nests the actual events under
- *      topical wrapper bullets — e.g. a parent "Israel-Hamas war"
- *      <li> with the day's specific events as nested <li> children.
- *      Those nested children are exactly what we want as headlines.)
- *   2. Strip Wikipedia's citation superscripts and edit-section
- *      links — they're noise without the rendered references.
- *   3. The first external link inside the bullet is the source URL
- *      (the wikilink to the topic's Wikipedia page is also there,
- *      but for "open the source on click" we want the news outlet,
- *      not Wikipedia).
- *   4. Drop bullets that are too short to be event headlines.
- *   5. Dedupe by headline text — sub-bullet structure can produce
- *      the same string showing up at multiple list levels.
+ *   • <Topic>          ← outer <li>: a wikilink to the broader topic
+ *                        ("Russian invasion of Ukraine",
+ *                        "2024–25 Sudanese civil war", etc.)
+ *     ◦ <Description>   ← inner <li>: a specific event today,
+ *                        written in journalistic-summary prose
+ *
+ * The descriptions are what reads as a "headline"; the outer
+ * wikilink is the most useful click-through (stable Wikipedia URL
+ * for the broader topic). We pull the inner bullets as headlines and
+ * attach each one to its parent bullet's wikilink — exactly the
+ * pairing Ted asked for.
+ *
+ * Strategy:
+ *
+ *   1. Walk every leaf `<li>` (one with no nested list inside it).
+ *      Leaves are either the inner bullets in a nested structure or
+ *      flat bullets in non-nested days. Outer/topic bullets are
+ *      skipped because they contain a nested `<ul>`.
+ *   2. Clean the leaf's text by stripping citation superscripts,
+ *      edit links, etc. Treat the first sentence of the cleaned text
+ *      as the headline (`extractTitle` enforces this).
+ *   3. Look up to the nearest parent `<li>` and grab its first
+ *      wikilink as the topic link. If there is no parent `<li>`
+ *      (flat bullet), fall back to the bullet's own first wikilink —
+ *      which for a flat bullet is usually the topic it's about.
+ *   4. Dedupe by headline text — Wikipedia occasionally repeats the
+ *      same description in two list sections (e.g. "Armed conflicts"
+ *      and "International relations") on the same day.
  */
 function parseEvents(html) {
   const doc = new DOMParser().parseFromString(html, "text/html");
 
-  const candidates = doc.querySelectorAll("li, dd");
   const events = [];
   const seen = new Set();
 
-  for (const el of candidates) {
-    const clone = el.cloneNode(true);
+  const allLi = doc.querySelectorAll("li");
 
-    // Remove nested lists from the clone so a parent bullet's text
-    // is just its own text, not a concatenation of all its
-    // descendants' text. Without this, a parent bullet for a topic
-    // would render as the topic name immediately followed by every
-    // sub-bullet's text mashed together.
+  for (const li of allLi) {
+    // Skip non-leaf bullets — those containing their own nested
+    // bullet list. We want only the deepest descriptions.
+    if (li.querySelector("ul, ol")) continue;
+
+    const clone = li.cloneNode(true);
     clone
-      .querySelectorAll("ul, ol, dl, sup, .reference, .mw-editsection, .citation, style, link")
+      .querySelectorAll(
+        "sup, .reference, .mw-editsection, .citation, style, link"
+      )
       .forEach((n) => n.remove());
 
-    const headline = (clone.textContent ?? "")
+    const rawText = (clone.textContent ?? "")
       .trim()
       .replace(/\s+/g, " ");
+    if (!rawText) continue;
+
+    const headline = extractTitle(rawText);
     if (!headline) continue;
     if (headline.length < 20) continue;
     if (!/\s/.test(headline)) continue;
     if (seen.has(headline)) continue;
     seen.add(headline);
 
-    const sourceUrl = firstExternalLink(clone);
-    const category = findCategoryFor(el);
+    const topic = findTopicLink(li);
+    const category = findCategoryFor(li);
 
-    events.push({ headline, sourceUrl, category });
+    events.push({
+      headline,
+      sourceUrl: topic?.url ?? null,
+      topicTitle: topic?.title ?? null,
+      category,
+      body: rawText,
+    });
   }
 
   return events;
 }
 
-function firstExternalLink(scope) {
-  // Wikipedia's parser annotates external links with class="external".
-  // Our parsed HTML preserves these classes.
-  const a = scope.querySelector('a[class*="external"]');
-  if (a && a.href) return a.href;
-  // Fallback: any <a> whose href is not a Wikipedia internal link.
-  for (const link of scope.querySelectorAll("a[href]")) {
-    const href = link.getAttribute("href") ?? "";
-    if (/^https?:\/\//.test(href) && !/wikipedia\.org\/wiki\//.test(href)) {
-      return link.href;
-    }
+/**
+ * Find the wikilink that names the topic this leaf bullet falls
+ * under. Prefer the immediate parent `<li>`'s first wikilink (the
+ * canonical "topic" link in Wikipedia's two-tier nested pattern);
+ * fall back to the leaf's own first wikilink for flat bullets.
+ * Returns null when neither yields a usable wikilink.
+ */
+function findTopicLink(li) {
+  const parentLi = li.parentElement?.closest("li");
+  if (parentLi) {
+    const link = firstWikilinkIn(parentLi);
+    if (link) return link;
   }
-  return null;
+  return firstWikilinkIn(li);
+}
+
+/**
+ * First internal Wikipedia link inside the given `<li>`, looking only
+ * at the element's own direct content (nested lists stripped from the
+ * clone so we don't accidentally pick up a wikilink from a sub-
+ * bullet).
+ */
+function firstWikilinkIn(li) {
+  const clone = li.cloneNode(true);
+  clone.querySelectorAll("ul, ol, dl").forEach((n) => n.remove());
+
+  const a = clone.querySelector('a[href^="/wiki/"]');
+  if (!a) return null;
+
+  const href = a.getAttribute("href");
+  if (!href) return null;
+
+  return {
+    url: new URL(href, "https://en.wikipedia.org/").href,
+    title: (a.textContent ?? "").trim(),
+  };
+}
+
+/**
+ * Reduce a Wikipedia Current Events bullet to its title — the lead
+ * sentence, with trailing source attributions stripped.
+ *
+ * Wikipedia portal bullets are written in journalistic-summary style:
+ * the first sentence is the news, and any subsequent sentences add
+ * elaboration or context. Pulling just the first sentence gives us
+ * something that reads as a headline rather than a paragraph.
+ *
+ * The sentence-boundary detector requires a period (or ! or ?) to be
+ * followed by whitespace and a capital letter, which keeps
+ * abbreviations like "U.S." or "Dr." from being treated as sentence
+ * ends. Bullets without a clean first-sentence break (single-sentence
+ * bullets, or ones containing only abbreviation periods) fall through
+ * to the full cleaned text.
+ *
+ * Trailing parenthetical source mentions ("(Reuters)", "(BBC News)")
+ * and stray citation markers ("[1]") are stripped before sentence
+ * detection — Wikipedia tucks the source-link text into the bullet's
+ * tail and it would otherwise pollute the headline.
+ */
+function extractTitle(rawText) {
+  let s = rawText.trim();
+  // Strip trailing parenthetical source attributions and citations.
+  // Run these as a small loop so a bullet ending in "(Reuters) [1]"
+  // gets both stripped without us having to enumerate orderings.
+  for (let i = 0; i < 3; i++) {
+    const before = s;
+    s = s.replace(/\s*\([^()]{1,40}\)\s*$/, "");
+    s = s.replace(/\s*\[\d+\]\s*$/, "");
+    s = s.trim();
+    if (s === before) break;
+  }
+  // First-sentence detector: minimal-match up to a sentence-ender,
+  // lookahead requires whitespace + capital so abbreviation periods
+  // ("U.S. announces ...") don't trigger a false split.
+  const m = s.match(/^(.+?[.!?])\s+[A-Z]/);
+  if (m && m[1].length >= 20) return m[1];
+  return s;
 }
 
 function findCategoryFor(el) {

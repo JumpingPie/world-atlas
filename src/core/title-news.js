@@ -96,17 +96,24 @@ const HEADLINE_STYLE = {
 };
 
 /**
- * Initialize the cartouche cycler against an existing SVG cartouche.
+ * Initialize the cartouche cycler + news dropdown against an existing
+ * cartouche stack.
  *
  * Idempotent enough that a double-call won't double up timers (we
  * clear any previous cycle on entry), but we don't expect that — the
  * bootstrap script calls this exactly once.
  *
- * If today's events can't be fetched (network error, Wikipedia outage,
- * or the portal page hasn't been written yet for early-UTC visits),
- * the cartouche silently stays on the static title. This is the
- * graceful-degradation default; the atlas is fully usable without the
- * news layer.
+ * The cartouche is a click-to-open affordance for the dropdown; the
+ * dropdown lists the day's headlines in full and is the click-
+ * through to each source. The fade cycle just keeps the cartouche's
+ * inner text fresh in the background.
+ *
+ * If today's events can't be fetched (network error, Wikipedia
+ * outage, or the portal page hasn't been written yet for early-UTC
+ * visits), the cartouche silently stays on the static title and the
+ * dropdown stays empty (the user can still click the cartouche; the
+ * empty-state row explains there's no news right now). The atlas is
+ * fully usable without the news layer.
  *
  * @param {SVGElement} svgEl - The cartouche <svg> element.
  */
@@ -114,18 +121,39 @@ export async function initTitleNews(svgEl) {
   if (!svgEl) return;
   const textEl = svgEl.querySelector("text");
   if (!textEl) return;
+  const stackEl = svgEl.closest(".map-cartouche-stack");
+  const dropdownEl = stackEl?.querySelector(".map-cartouche-dropdown");
+  const listEl = dropdownEl?.querySelector(".cartouche-headline-list");
 
   cancelExistingCycle(svgEl);
 
-  // Click handler — installed once, dispatches based on a data
-  // attribute that we set/clear with the fade. While the cartouche
-  // is showing the title, the data attribute is absent and clicks
-  // are ignored. While a headline is showing, the attribute holds
-  // the source URL.
-  textEl.addEventListener("click", () => {
-    const url = textEl.dataset.sourceUrl;
-    if (url) window.open(url, "_blank", "noopener,noreferrer");
-  });
+  // Cartouche click → toggle dropdown. Bound on the SVG so any
+  // painted child (rect, dotted lines, text) triggers it. The SVG's
+  // visiblePainted pointer-events means empty canvas areas pass
+  // through to the map for drag.
+  if (dropdownEl) {
+    svgEl.addEventListener("click", () => toggleDropdown(svgEl, dropdownEl));
+    svgEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        toggleDropdown(svgEl, dropdownEl);
+      }
+    });
+
+    // Outside-click and Escape close the dropdown. Bound on document
+    // so they work regardless of where the click lands.
+    document.addEventListener("click", (e) => {
+      if (dropdownEl.hidden) return;
+      if (stackEl.contains(e.target)) return;
+      closeDropdown(svgEl, dropdownEl);
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !dropdownEl.hidden) {
+        closeDropdown(svgEl, dropdownEl);
+        svgEl.focus();
+      }
+    });
+  }
 
   // Pre-set the title style on first paint. The SVG markup carries
   // its own font-size etc., but we override via inline style here so
@@ -143,16 +171,93 @@ export async function initTitleNews(svgEl) {
       "[title-news] could not load current events; cartouche will stay on title",
       err
     );
+    renderDropdownEmpty(listEl, "Couldn’t load today’s news. Try again later.");
     return;
   }
 
   if (!events || events.length === 0) {
     console.info("[title-news] no usable events today; cartouche staying on title");
+    renderDropdownEmpty(listEl, "No headlines available for today yet.");
     return;
   }
 
   console.info(`[title-news] cycling through ${events.length} events`);
+  renderDropdown(listEl, events);
   startCycle(svgEl, textEl, events);
+}
+
+function toggleDropdown(svgEl, dropdownEl) {
+  if (dropdownEl.hidden) {
+    openDropdown(svgEl, dropdownEl);
+  } else {
+    closeDropdown(svgEl, dropdownEl);
+  }
+}
+
+function openDropdown(svgEl, dropdownEl) {
+  dropdownEl.hidden = false;
+  svgEl.setAttribute("aria-expanded", "true");
+}
+
+function closeDropdown(svgEl, dropdownEl) {
+  dropdownEl.hidden = true;
+  svgEl.setAttribute("aria-expanded", "false");
+}
+
+function renderDropdown(listEl, events) {
+  if (!listEl) return;
+  listEl.textContent = "";
+  for (const event of events) {
+    const li = document.createElement("li");
+
+    let row;
+    if (event.sourceUrl) {
+      row = document.createElement("a");
+      row.href = event.sourceUrl;
+      row.target = "_blank";
+      row.rel = "noopener noreferrer";
+    } else {
+      row = document.createElement("span");
+    }
+    row.className = "cartouche-headline";
+
+    const text = document.createElement("span");
+    text.className = "cartouche-headline-text";
+    text.textContent = event.headline;
+    row.appendChild(text);
+
+    // Meta line: category and the parent-bullet topic title, when
+    // both exist. They give the user context for *what* the clicked
+    // link is going to open (the topic Wikipedia page), separate
+    // from the day's specific description above.
+    const metaParts = [];
+    if (event.category) metaParts.push(event.category);
+    if (event.topicTitle && event.topicTitle !== event.category) {
+      metaParts.push(event.topicTitle);
+    }
+    if (metaParts.length > 0) {
+      const meta = document.createElement("span");
+      meta.className = "cartouche-headline-meta";
+      meta.textContent = metaParts.join(" · ");
+      row.appendChild(meta);
+    }
+
+    li.appendChild(row);
+    listEl.appendChild(li);
+  }
+}
+
+function renderDropdownEmpty(listEl, message) {
+  if (!listEl) return;
+  listEl.textContent = "";
+  const li = document.createElement("li");
+  const row = document.createElement("span");
+  row.className = "cartouche-headline";
+  row.style.fontStyle = "italic";
+  row.style.opacity = "0.7";
+  row.textContent = message;
+  li.appendChild(row);
+  listEl.appendChild(li);
 }
 
 /**
@@ -175,10 +280,6 @@ function startCycle(svgEl, textEl, events) {
   let index = 0;
 
   const showTitle = () => {
-    delete textEl.dataset.sourceUrl;
-    textEl.style.cursor = "";
-    textEl.style.pointerEvents = "none";
-
     fadeTo(textEl, () => {
       applyStyle(textEl, TITLE_STYLE);
       setSingleLineText(textEl, TITLE_TEXT, SINGLE_LINE_BASELINE_Y);
@@ -197,14 +298,6 @@ function startCycle(svgEl, textEl, events) {
       applyStyle(textEl, HEADLINE_STYLE);
       lineCount = fitHeadline(textEl, raw, TABLET_INNER_WIDTH);
     }).then(() => {
-      if (event.sourceUrl) {
-        textEl.dataset.sourceUrl = event.sourceUrl;
-        textEl.style.cursor = "pointer";
-        // pointer-events:auto re-enables clicks on this element only
-        // (the cartouche container is pointer-events:none so map
-        // drag still works elsewhere).
-        textEl.style.pointerEvents = "auto";
-      }
       const hold =
         HEADLINE_HOLD_MS + (lineCount > 1 ? TWO_LINE_BONUS_MS : 0);
       schedule(svgEl, hold, showTitle);

@@ -486,35 +486,150 @@ body {
 
 /* ---------- Title cartouche ----------
  *
- * Floating decorative title near the top center of the map area.
- * Inline SVG so it scales cleanly to whatever width and inherits
- * no theme tokens — the cartouche keeps its parchment-and-ink
+ * Floating decorative title near the top center of the map area,
+ * plus a click-to-open dropdown listing the day's news headlines.
+ * Inline SVG for the cartouche so it scales cleanly to any width
+ * and ignores theme tokens — it keeps its parchment-and-ink
  * character regardless of which theme is beneath it.
  *
- * Centered with the left:50% / translateX(-50%) idiom so it stays
- * centered as the map's effective width changes (panels opening
- * and closing).
+ * Centered with left:50% / translateX(-50%) so it stays centered
+ * as the map's effective width changes (side panels opening/
+ * closing). z-index 4 keeps the stack above the paper grain
+ * (z=1) but below the +/- zoom controls and the layer/theme
+ * buttons (z=5), so the cartouche never visually overlaps a
+ * control.
  *
- * pointer-events:none lets map drag/zoom interactions pass through
- * the cartouche's invisible bounding box (most of which is empty
- * SVG). Once clickable headlines are added in the news-banner work,
- * only the headline element itself will opt back in to clicks.
- *
- * z-index 4 keeps it above the paper grain (z=1) but below the
- * +/- zoom controls and the layer/theme buttons (z=5), so the
- * cartouche never overlaps a control. */
-.map-cartouche {
+ * The stack is pointer-events:none at the container level so map
+ * drag/zoom interactions pass through everything the cartouche
+ * doesn't visibly cover. The SVG's painted area and the dropdown
+ * panel re-enable pointer-events for their actual click targets. */
+.map-cartouche-stack {
   position: absolute;
-  /* Sits close to the top of the map area to stay unobtrusive,
-   * with just enough margin that the cartouche doesn't visually
-   * collide with the map's top edge. */
   top: 6px;
   left: 50%;
   transform: translateX(-50%);
   width: min(720px, 85%);
-  height: auto;
   z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   pointer-events: none;
+}
+
+.map-cartouche {
+  width: 100%;
+  height: auto;
+  /* visiblePainted is the SVG default but stating it explicitly
+   * documents the intent: only painted regions (the tablet rect,
+   * dotted stripes, title text) catch clicks; the empty SVG
+   * canvas around them lets map drags through. */
+  pointer-events: visiblePainted;
+  cursor: pointer;
+  outline: none;
+}
+
+.map-cartouche:focus-visible {
+  /* Keyboard focus ring — using a CSS variable from the active
+   * theme tokens so it remains visible against both light and
+   * dark map backgrounds. */
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Current-news dropdown panel that opens below the cartouche when
+ * the user clicks it. Lives inside the same stack so it
+ * auto-positions directly beneath the cartouche regardless of the
+ * cartouche's rendered size.
+ *
+ * Same parchment-and-ink palette as the cartouche to read as a
+ * continuation of the same object rather than a generic dropdown.
+ * Scrollable internally if the day's headline count exceeds the
+ * panel's max-height. */
+.map-cartouche-dropdown {
+  margin-top: 8px;
+  background: #f2eadc;
+  border: 1.2px solid #3d2f20;
+  color: #3d2f20;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 13px;
+  max-height: 60vh;
+  overflow-y: auto;
+  pointer-events: auto;
+  box-shadow: 0 4px 14px rgba(60, 40, 15, 0.18);
+}
+
+.map-cartouche-dropdown[hidden] {
+  display: none;
+}
+
+.cartouche-dropdown-header {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  padding: 10px 14px 8px;
+  border-bottom: 1px dashed rgba(61, 47, 32, 0.4);
+  color: #3d2f20;
+}
+
+.cartouche-headline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cartouche-headline-list li + li {
+  border-top: 1px dashed rgba(61, 47, 32, 0.25);
+}
+
+.cartouche-headline {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  text-align: left;
+  color: #3d2f20;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+  padding: 9px 14px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 100ms ease;
+}
+
+.cartouche-headline:hover,
+.cartouche-headline:focus-visible {
+  background: rgba(61, 47, 32, 0.07);
+  outline: none;
+}
+
+.cartouche-headline-text {
+  display: block;
+}
+
+.cartouche-headline-meta {
+  display: block;
+  font-size: 10.5px;
+  color: rgba(61, 47, 32, 0.65);
+  font-style: italic;
+  margin-top: 3px;
+  letter-spacing: 0.5px;
+}
+
+.cartouche-dropdown-footer {
+  padding: 8px 14px 10px;
+  border-top: 1px dashed rgba(61, 47, 32, 0.4);
+  font-size: 10.5px;
+  font-style: italic;
+  color: rgba(61, 47, 32, 0.65);
+  text-align: center;
+}
+
+.cartouche-dropdown-footer a {
+  color: inherit;
+  text-decoration: underline;
 }
 
 /* ---------- Side and bottom panels ----------
