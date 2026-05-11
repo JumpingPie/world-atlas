@@ -32,6 +32,15 @@ const USER_AGENT =
 
 const TTL_MS = 60 * 60 * 1000; // 1 hour
 
+// How many days back from today we'll pull events for. The cycle/
+// dropdown combines all days into one deduped list, so a wider
+// window gives a longer, less-repetitive cycle. Three days seems
+// right: enough variety that the cycle doesn't loop quickly, but
+// not so wide that the user is reading old news. Each day is its
+// own cache entry, so a wider window doesn't multiply network cost
+// after the first load of the day.
+const LOOKBACK_DAYS = 3;
+
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
@@ -67,7 +76,11 @@ function pageTitleForDate(date) {
  */
 export async function fetchEventsForDate(date) {
   const title = pageTitleForDate(date);
-  const key = `wikipedia-current-events:${title}`;
+  // Cache key includes a parser-version suffix so old cached results
+  // from a previous parser implementation get bypassed automatically
+  // when the parser changes shape. Bump this any time the event-
+  // object schema or extraction logic changes meaningfully.
+  const key = `wikipedia-current-events/v3:${title}`;
   return getOrFetch(key, TTL_MS, async () => {
     const url =
       `${PARSE_API}?action=parse` +
@@ -107,19 +120,66 @@ export async function fetchEventsForDate(date) {
 }
 
 /**
- * Convenience: today's events, falling back to yesterday's if today's
- * page hasn't been written yet (which happens routinely for a few
- * hours each UTC morning).
+ * Recent events — today plus the previous `LOOKBACK_DAYS - 1` days,
+ * combined into one deduped list ordered most-recent-first.
+ *
+ * Pulling several days at once gives the cartouche cycler a long
+ * enough event pool that headlines don't recur quickly. Each day's
+ * fetch is independently cached, so the first load of the session
+ * does N parallel HTTP requests; subsequent loads within the cache
+ * TTL are free.
+ *
+ * Events are deduped by headline text — Wikipedia occasionally
+ * carries the same description across adjacent days (especially for
+ * ongoing situations) and we don't want those to inflate the cycle.
+ *
+ * Returns an object with the combined events array. The shape is
+ * unchanged from the previous single-day return so callers don't
+ * need to know that the source is now multi-day.
  *
  * @returns {Promise<{events: Array, date: string} | null>}
  */
 export async function fetchTodayEvents() {
   const today = new Date();
-  const todayResult = await fetchEventsForDate(today);
-  if (todayResult && todayResult.events.length > 0) return todayResult;
+  const datesToFetch = [];
+  for (let i = 0; i < LOOKBACK_DAYS; i++) {
+    datesToFetch.push(new Date(today.getTime() - i * 24 * 60 * 60 * 1000));
+  }
 
-  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
-  return fetchEventsForDate(yesterday);
+  // Parallelize the per-day fetches. Each can succeed or fail
+  // independently — a single missing day shouldn't poison the rest.
+  const dayResults = await Promise.all(
+    datesToFetch.map((d) =>
+      fetchEventsForDate(d).catch((err) => {
+        console.warn(
+          "[wikipedia-current-events] day fetch failed for",
+          d.toISOString().slice(0, 10),
+          err
+        );
+        return null;
+      })
+    )
+  );
+
+  const combined = [];
+  const seen = new Set();
+  for (const day of dayResults) {
+    if (!day?.events) continue;
+    for (const event of day.events) {
+      if (seen.has(event.headline)) continue;
+      seen.add(event.headline);
+      combined.push(event);
+    }
+  }
+
+  return {
+    _schema: "wikipedia-current-events/v2",
+    _generated: new Date().toISOString(),
+    _source: "en.wikipedia.org",
+    date: today.toISOString().slice(0, 10),
+    days: dayResults.filter((r) => r).map((r) => r.date),
+    events: combined,
+  };
 }
 
 function dateToISODate(date) {
@@ -194,18 +254,51 @@ function parseEvents(html) {
     seen.add(headline);
 
     const topic = findTopicLink(li);
+    const source = findExternalSource(clone);
     const category = findCategoryFor(li);
 
     events.push({
       headline,
-      sourceUrl: topic?.url ?? null,
+      topicUrl: topic?.url ?? null,
       topicTitle: topic?.title ?? null,
+      sourceUrl: source?.url ?? null,
+      sourceTitle: source?.title ?? null,
       category,
       body: rawText,
     });
   }
 
   return events;
+}
+
+/**
+ * Find an external news-source link inside the bullet — the
+ * Wikipedia portal convention is to end each event with a link to
+ * the originating source ("(BBC News)", "(Reuters)", etc.), marked
+ * by the parser with the class "external".
+ *
+ * This is back-by-popular-demand: the previous parser version
+ * surfaced this URL as the click-through, and Ted asked to keep it
+ * available alongside the Wikipedia topic link so the dropdown can
+ * offer both — the topic page for context, the source article for
+ * the actual reporting.
+ */
+function findExternalSource(scope) {
+  const a = scope.querySelector('a.external, a[class*="external"]');
+  if (a) {
+    const href = a.getAttribute("href");
+    if (href && /^https?:\/\//.test(href)) {
+      return { url: href, title: (a.textContent ?? "").trim() };
+    }
+  }
+  // Fallback: any link whose href is an absolute non-Wikipedia URL.
+  for (const link of scope.querySelectorAll("a[href]")) {
+    const href = link.getAttribute("href") ?? "";
+    if (/^https?:\/\//.test(href) && !/wikipedia\.org/.test(href)) {
+      return { url: href, title: (link.textContent ?? "").trim() };
+    }
+  }
+  return null;
 }
 
 /**

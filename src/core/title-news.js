@@ -71,10 +71,13 @@ const SINGLE_LINE_BASELINE_Y = 42;
 const TWO_LINE_FIRST_BASELINE_Y = 33;
 const LINE_HEIGHT = 16;
 
-// How many of the day's events we'll cycle through before looping.
-// The portal typically has ~30-60 events per day; ten gives the user
-// a reasonable sample without making the loop feel endless.
-const EVENT_LIMIT = 10;
+// How many events we'll cycle through before looping. The fetcher
+// now pulls several days at once, giving us 100+ candidate events to
+// choose from. Twenty-five strikes a balance: long enough that the
+// cycle doesn't feel repetitive over a long session, short enough
+// that any given user is likely to see most of the cycle within a
+// few minutes if they leave the app open.
+const EVENT_LIMIT = 25;
 
 // SVG <text> styles for each mode. Switched atomically with the
 // content swap inside the fade window. Title mode: caps + spaced +
@@ -209,54 +212,77 @@ function renderDropdown(listEl, events) {
   listEl.textContent = "";
   for (const event of events) {
     const li = document.createElement("li");
+    li.className = "cartouche-headline-item";
 
-    let row;
-    if (event.sourceUrl) {
-      row = document.createElement("a");
-      row.href = event.sourceUrl;
-      row.target = "_blank";
-      row.rel = "noopener noreferrer";
-    } else {
-      row = document.createElement("span");
-    }
-    row.className = "cartouche-headline";
-
-    const text = document.createElement("span");
+    const text = document.createElement("div");
     text.className = "cartouche-headline-text";
     text.textContent = event.headline;
-    row.appendChild(text);
+    li.appendChild(text);
 
-    // Meta line: category and the parent-bullet topic title, when
-    // both exist. They give the user context for *what* the clicked
-    // link is going to open (the topic Wikipedia page), separate
-    // from the day's specific description above.
-    const metaParts = [];
-    if (event.category) metaParts.push(event.category);
-    if (event.topicTitle && event.topicTitle !== event.category) {
-      metaParts.push(event.topicTitle);
-    }
-    if (metaParts.length > 0) {
-      const meta = document.createElement("span");
+    if (event.category) {
+      const meta = document.createElement("div");
       meta.className = "cartouche-headline-meta";
-      meta.textContent = metaParts.join(" · ");
-      row.appendChild(meta);
+      meta.textContent = event.category;
+      li.appendChild(meta);
     }
 
-    li.appendChild(row);
+    // One link button per available destination. Wikipedia topic
+    // first (the canonical reference) and the news source second
+    // (the actual reporting). When the bullet has neither, the row
+    // shows just the headline as display-only — rare, but possible
+    // for bullets stripped of links during cleanup.
+    const links = document.createElement("div");
+    links.className = "cartouche-headline-links";
+
+    if (event.topicUrl) {
+      links.appendChild(
+        makeLink(
+          event.topicUrl,
+          event.topicTitle
+            ? truncateLabel(event.topicTitle, 38)
+            : "Wikipedia topic",
+          "cartouche-headline-link"
+        )
+      );
+    }
+    if (event.sourceUrl) {
+      links.appendChild(
+        makeLink(
+          event.sourceUrl,
+          event.sourceTitle
+            ? truncateLabel(event.sourceTitle, 38)
+            : "Source",
+          "cartouche-headline-link cartouche-headline-link-source"
+        )
+      );
+    }
+    if (links.childNodes.length > 0) li.appendChild(links);
+
     listEl.appendChild(li);
   }
+}
+
+function makeLink(href, label, className) {
+  const a = document.createElement("a");
+  a.href = href;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  a.className = className;
+  a.textContent = `↗ ${label}`;
+  return a;
+}
+
+function truncateLabel(s, max) {
+  if (s.length <= max) return s;
+  return s.slice(0, max - 1).trim() + "…";
 }
 
 function renderDropdownEmpty(listEl, message) {
   if (!listEl) return;
   listEl.textContent = "";
   const li = document.createElement("li");
-  const row = document.createElement("span");
-  row.className = "cartouche-headline";
-  row.style.fontStyle = "italic";
-  row.style.opacity = "0.7";
-  row.textContent = message;
-  li.appendChild(row);
+  li.className = "cartouche-headline-item cartouche-headline-empty";
+  li.textContent = message;
   listEl.appendChild(li);
 }
 

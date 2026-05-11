@@ -583,39 +583,88 @@ body {
   border-top: 1px dashed rgba(61, 47, 32, 0.25);
 }
 
-.cartouche-headline {
-  display: block;
-  width: 100%;
-  background: none;
-  border: none;
-  text-align: left;
-  color: #3d2f20;
-  font-family: inherit;
-  font-size: 13px;
-  line-height: 1.45;
-  padding: 9px 14px;
-  cursor: pointer;
-  text-decoration: none;
+/* Each headline row hosts: a description line, an optional category
+ * line, and a flex row of one or two link buttons (Wikipedia topic,
+ * external source). The whole row isn't itself a link any more —
+ * the click targets are explicit so users can tell where each
+ * destination leads. */
+.cartouche-headline-item {
+  padding: 10px 14px;
   transition: background 100ms ease;
 }
 
-.cartouche-headline:hover,
-.cartouche-headline:focus-visible {
-  background: rgba(61, 47, 32, 0.07);
-  outline: none;
+.cartouche-headline-item:hover {
+  background: rgba(61, 47, 32, 0.04);
 }
 
 .cartouche-headline-text {
-  display: block;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #3d2f20;
 }
 
 .cartouche-headline-meta {
-  display: block;
   font-size: 10.5px;
   color: rgba(61, 47, 32, 0.65);
   font-style: italic;
   margin-top: 3px;
   letter-spacing: 0.5px;
+}
+
+/* Link button row beneath each headline. Wraps when the buttons
+ * don't fit in one line — long topic titles can push the row to two
+ * lines on narrow viewports. */
+.cartouche-headline-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.cartouche-headline-link {
+  display: inline-block;
+  padding: 3px 9px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 11px;
+  font-style: italic;
+  color: #3d2f20;
+  background: rgba(61, 47, 32, 0.03);
+  border: 1px solid rgba(61, 47, 32, 0.4);
+  border-radius: 3px;
+  text-decoration: none;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background 100ms ease, border-color 100ms ease;
+}
+
+.cartouche-headline-link:hover,
+.cartouche-headline-link:focus-visible {
+  background: rgba(61, 47, 32, 0.1);
+  border-color: rgba(61, 47, 32, 0.7);
+  outline: none;
+}
+
+/* The source-link variant gets a small visual differentiator
+ * (slightly warmer tint) so users can distinguish "Wikipedia topic"
+ * from "news source" at a glance. */
+.cartouche-headline-link-source {
+  background: rgba(184, 90, 58, 0.06);
+  border-color: rgba(184, 90, 58, 0.5);
+}
+
+.cartouche-headline-link-source:hover,
+.cartouche-headline-link-source:focus-visible {
+  background: rgba(184, 90, 58, 0.14);
+  border-color: rgba(184, 90, 58, 0.8);
+}
+
+.cartouche-headline-empty {
+  font-style: italic;
+  color: rgba(61, 47, 32, 0.7);
+  padding: 12px 14px;
 }
 
 .cartouche-dropdown-footer {
